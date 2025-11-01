@@ -284,9 +284,27 @@ def train_model():
             "training_time_seconds": training_time
         })
 
-        # Save final model
-        final_model_path = MODELS_DIR / "brain_tumor_model.h5"
-        best_model.save(str(final_model_path))
+        # === FIX: Save using .keras format (native Keras 3 format) ===
+        print("\n" + "=" * 60)
+        print("STEP 6: Saving final model...")
+        print("=" * 60)
+
+        # Save in native Keras format (.keras) - RECOMMENDED
+        final_model_path_keras = MODELS_DIR / "brain_tumor_model.keras"
+        best_model.save(str(final_model_path_keras))
+        print(f"✅ Model saved: {final_model_path_keras}")
+
+        # Also save in .h5 format for backward compatibility (using save_weights instead)
+        final_model_path_h5 = MODELS_DIR / "brain_tumor_model.h5"
+        try:
+            # Save only weights to avoid pickle issues
+            best_model.save_weights(str(final_model_path_h5))
+            print(f"✅ Model weights saved: {final_model_path_h5}")
+        except Exception as e:
+            print(f"⚠️  Could not save .h5 format: {e}")
+            print("   (This is OK - using .keras format instead)")
+
+        # Log model to MLflow
         mlflow.keras.log_model(best_model, "model")
 
         # Save class names
@@ -304,7 +322,8 @@ def train_model():
         print(f"Training Accuracy:   {final_train_acc * 100:.2f}%")
         print(f"Validation Accuracy: {final_val_acc * 100:.2f}%")
         print(f"Test Accuracy:       {test_accuracy * 100:.2f}%")
-        print(f"\n💾 Model saved: {final_model_path}")
+        print(f"\n💾 Model saved: {final_model_path_keras}")
+        print(f"💾 Model weights: {final_model_path_h5}")
         print(f"📝 Class names: {class_names_path}")
         print(f"📊 Confusion matrix: {MODELS_DIR / 'confusion_matrix.png'}")
         print(f"📈 Training plot: {plot_path}")
