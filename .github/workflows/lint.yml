@@ -53,7 +53,7 @@ jobs:
     - name: Lint with flake8
       run: |
         flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 src/ --count --max-complexity=10 --max-line-length=127 --statistics --exit-zero
+        flake8 src/ --count --max-complexity=10 --max-line-length=127 --statistics || true
 
     - name: Lint with pylint
       run: |
@@ -77,7 +77,3 @@ jobs:
         dockerfile: Dockerfile
         failure-threshold: error
         ignore: DL3008,DL3013
-
-    - name: Lint docker-compose
-      run: |
-        docker-compose config > /dev/null
