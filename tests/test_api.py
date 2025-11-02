@@ -112,9 +112,7 @@ class TestPredictionEndpoints:
         test_image = create_test_image()
 
         # Send prediction request
-        response = client.post(
-            "/predict", files={"file": ("test.jpg", test_image, "image/jpeg")}
-        )
+        response = client.post("/predict", files={"file": ("test.jpg", test_image, "image/jpeg")})
 
         # If model is not loaded, expect 503
         if response.status_code == 503:
@@ -136,9 +134,7 @@ class TestPredictionEndpoints:
         # Create a text file
         text_file = io.BytesIO(b"This is not an image")
 
-        response = client.post(
-            "/predict", files={"file": ("test.txt", text_file, "text/plain")}
-        )
+        response = client.post("/predict", files={"file": ("test.txt", text_file, "text/plain")})
 
         # Should be 400 (bad request) or 503 (model not loaded)
         assert response.status_code in [400, 503]
@@ -153,9 +149,7 @@ class TestPredictionEndpoints:
             ("test2.jpg", create_test_image(color=(0, 255, 0)), "image/jpeg"),
         ]
 
-        response = client.post(
-            "/predict/batch", files=[("files", img) for img in test_images]
-        )
+        response = client.post("/predict/batch", files=[("files", img) for img in test_images])
 
         # If model is not loaded, expect 503
         if response.status_code == 503:
@@ -186,13 +180,9 @@ class TestPredictionEndpoints:
     def test_predict_batch_too_many(self):
         """Test batch prediction with too many files"""
         # Create 11 test images (exceeds limit of 10)
-        test_images = [
-            (f"test{i}.jpg", create_test_image(), "image/jpeg") for i in range(11)
-        ]
+        test_images = [(f"test{i}.jpg", create_test_image(), "image/jpeg") for i in range(11)]
 
-        response = client.post(
-            "/predict/batch", files=[("files", img) for img in test_images]
-        )
+        response = client.post("/predict/batch", files=[("files", img) for img in test_images])
 
         # Should be 400 (bad request) or 503 (model not loaded)
         assert response.status_code in [400, 503]

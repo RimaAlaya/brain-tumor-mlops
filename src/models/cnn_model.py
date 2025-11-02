@@ -43,14 +43,8 @@ def get_callbacks(model_save_path):
         ReduceLROnPlateau,
     )
 
-    checkpoint = ModelCheckpoint(
-        str(model_save_path), monitor="val_accuracy", save_best_only=True, verbose=1
-    )
-    reduce_lr = ReduceLROnPlateau(
-        monitor="val_accuracy", factor=0.3, patience=2, min_delta=0.001, verbose=1
-    )
-    early = EarlyStopping(
-        monitor="val_loss", patience=6, restore_best_weights=True, verbose=1
-    )
+    checkpoint = ModelCheckpoint(str(model_save_path), monitor="val_accuracy", save_best_only=True, verbose=1)
+    reduce_lr = ReduceLROnPlateau(monitor="val_accuracy", factor=0.3, patience=2, min_delta=0.001, verbose=1)
+    early = EarlyStopping(monitor="val_loss", patience=6, restore_best_weights=True, verbose=1)
 
     return [checkpoint, reduce_lr, early]

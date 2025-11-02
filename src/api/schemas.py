@@ -9,12 +9,8 @@ class PredictionResponse(BaseModel):
 
     predicted_class: str = Field(..., description="Predicted tumor class")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score (0-1)")
-    all_probabilities: Dict[str, float] = Field(
-        ..., description="Probabilities for all classes"
-    )
-    inference_time_seconds: float = Field(
-        ..., description="Time taken for inference in seconds"
-    )
+    all_probabilities: Dict[str, float] = Field(..., description="Probabilities for all classes")
+    inference_time_seconds: float = Field(..., description="Time taken for inference in seconds")
     timestamp: str = Field(..., description="Prediction timestamp (ISO format)")
 
     class Config:
@@ -39,28 +35,18 @@ class BatchPredictionItem(BaseModel):
 
     filename: str = Field(..., description="Original filename")
     predicted_class: Optional[str] = Field(None, description="Predicted tumor class")
-    confidence: Optional[float] = Field(
-        None, ge=0.0, le=1.0, description="Confidence score"
-    )
-    all_probabilities: Optional[Dict[str, float]] = Field(
-        None, description="Probabilities for all classes"
-    )
+    confidence: Optional[float] = Field(None, ge=0.0, le=1.0, description="Confidence score")
+    all_probabilities: Optional[Dict[str, float]] = Field(None, description="Probabilities for all classes")
     error: Optional[str] = Field(None, description="Error message if prediction failed")
 
 
 class BatchPredictionResponse(BaseModel):
     """Response model for batch prediction"""
 
-    predictions: List[BatchPredictionItem] = Field(
-        ..., description="List of predictions"
-    )
+    predictions: List[BatchPredictionItem] = Field(..., description="List of predictions")
     total_images: int = Field(..., description="Total number of images submitted")
-    successful_predictions: int = Field(
-        ..., description="Number of successful predictions"
-    )
-    total_time_seconds: float = Field(
-        ..., description="Total processing time in seconds"
-    )
+    successful_predictions: int = Field(..., description="Number of successful predictions")
+    total_time_seconds: float = Field(..., description="Total processing time in seconds")
     timestamp: str = Field(..., description="Batch prediction timestamp (ISO format)")
 
     class Config:
@@ -95,12 +81,8 @@ class HealthResponse(BaseModel):
     model_loaded: bool = Field(..., description="Whether model is loaded")
     timestamp: str = Field(..., description="Health check timestamp (ISO format)")
     version: str = Field(..., description="API version")
-    predictions_served: Optional[int] = Field(
-        None, description="Total predictions served"
-    )
-    avg_inference_time: Optional[float] = Field(
-        None, description="Average inference time in seconds"
-    )
+    predictions_served: Optional[int] = Field(None, description="Total predictions served")
+    avg_inference_time: Optional[float] = Field(None, description="Average inference time in seconds")
 
     class Config:
         json_schema_extra = {
@@ -124,9 +106,7 @@ class ModelInfoResponse(BaseModel):
     output_shape: Any = Field(..., description="Model output shape")
     total_parameters: int = Field(..., description="Total number of model parameters")
     classes: List[str] = Field(..., description="List of classification classes")
-    image_size: tuple = Field(
-        ..., description="Expected input image size (width, height)"
-    )
+    image_size: tuple = Field(..., description="Expected input image size (width, height)")
     format: str = Field(..., description="Model file format (.keras or .h5)")
     loaded_at: str = Field(..., description="Model load timestamp (ISO format)")
 
@@ -182,12 +162,8 @@ class StatisticsResponse(BaseModel):
     """Response model for API statistics"""
 
     total_predictions: int = Field(..., description="Total number of predictions made")
-    total_inference_time: float = Field(
-        ..., description="Total cumulative inference time"
-    )
-    average_inference_time: float = Field(
-        ..., description="Average time per prediction"
-    )
+    total_inference_time: float = Field(..., description="Total cumulative inference time")
+    average_inference_time: float = Field(..., description="Average time per prediction")
     model_loaded: bool = Field(..., description="Whether model is loaded")
     classes_available: int = Field(..., description="Number of classes available")
 

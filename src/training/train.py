@@ -97,9 +97,7 @@ def preprocess_and_split(X, y, labels, random_state):
 
     # Shuffle & split
     X_proc, y = shuffle(X_proc, y, random_state=random_state)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_proc, y, test_size=0.10, random_state=random_state
-    )
+    X_train, X_test, y_train, y_test = train_test_split(X_proc, y, test_size=0.10, random_state=random_state)
 
     y_train_cat = to_categorical(y_train, num_classes=len(labels))
     y_test_cat = to_categorical(y_test, num_classes=len(labels))
@@ -166,9 +164,7 @@ def evaluate_and_plot(model, X_test, y_test, labels, save_dir):
     cmn = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
 
     plt.figure(figsize=(8, 6))
-    sns.heatmap(
-        cmn, annot=True, fmt=".2f", xticklabels=labels, yticklabels=labels, cmap="Blues"
-    )
+    sns.heatmap(cmn, annot=True, fmt=".2f", xticklabels=labels, yticklabels=labels, cmap="Blues")
     plt.xlabel("Predicted")
     plt.ylabel("True")
     plt.title("Normalized Confusion Matrix")
@@ -234,9 +230,7 @@ def train_model():
         print("\n" + "=" * 60)
         print("STEP 2: Preprocessing & splitting...")
         print("=" * 60)
-        X_train, X_test, y_train_cat, y_test_cat, y_test = preprocess_and_split(
-            X, y, labels, RANDOM_STATE
-        )
+        X_train, X_test, y_train_cat, y_test_cat, y_test = preprocess_and_split(X, y, labels, RANDOM_STATE)
 
         # Build model
         print("\n" + "=" * 60)
@@ -250,9 +244,7 @@ def train_model():
         )
 
         print(f"\nTotal parameters: {model.count_params():,}")
-        print(
-            f"Trainable parameters: {sum([tf.size(w).numpy() for w in model.trainable_weights]):,}"
-        )
+        print(f"Trainable parameters: {sum([tf.size(w).numpy() for w in model.trainable_weights]):,}")
 
         # Callbacks
         checkpoint_path = MODELS_DIR / "effnet_best.keras"
@@ -289,9 +281,7 @@ def train_model():
         best_model = tf.keras.models.load_model(str(checkpoint_path), compile=False)
 
         # Evaluate
-        y_true, y_pred, cm = evaluate_and_plot(
-            best_model, X_test, y_test, labels, MODELS_DIR
-        )
+        y_true, y_pred, cm = evaluate_and_plot(best_model, X_test, y_test, labels, MODELS_DIR)
 
         # Calculate metrics
         from sklearn.metrics import accuracy_score
@@ -339,9 +329,7 @@ def train_model():
 
         class_names_path = MODELS_DIR / "class_names.json"
         # Convert labels to match API expectations
-        api_labels = [
-            lbl.replace("_tumor", "").replace("no_", "notumor") for lbl in labels
-        ]
+        api_labels = [lbl.replace("_tumor", "").replace("no_", "notumor") for lbl in labels]
         with open(class_names_path, "w") as f:
             json.dump(api_labels, f)
 
@@ -371,9 +359,7 @@ def train_model():
         print("- Backbone: EfficientNetB0 (end-to-end fine-tuned)")
         print("- Input: 224x224 RGB")
         print("- Preprocess: EfficientNet preprocess_input")
-        print(
-            "- Training: validation_split=0.1, epochs=12, Adam lr=1e-3, ReduceLROnPlateau"
-        )
+        print("- Training: validation_split=0.1, epochs=12, Adam lr=1e-3, ReduceLROnPlateau")
         print("- Metric: classification_report + confusion matrix")
 
         return best_model, history
