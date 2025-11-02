@@ -121,7 +121,7 @@ jobs:
         context: .
         file: ./Dockerfile
         push: false
-        tags: brain-tumor-api:test
+        tags: brain-tumor-api:latest
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
@@ -129,7 +129,7 @@ jobs:
       run: |
         docker run -d --name test-api -p 8000:8000 \
           -v ${{ github.workspace }}/models:/app/models \
-          brain-tumor-api:test
+          brain-tumor-api:latest
         
         sleep 10
         
