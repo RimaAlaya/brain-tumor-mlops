@@ -1,10 +1,11 @@
-from fastapi.testclient import TestClient
+import io
 import sys
 from pathlib import Path
-import io
-from PIL import Image
+
 import numpy as np
 import pytest
+from fastapi.testclient import TestClient
+from PIL import Image
 
 sys.path.append(str(Path(__file__).parent.parent))
 
@@ -16,9 +17,9 @@ client = TestClient(app)
 # Helper function to create a test image
 def create_test_image(size=(224, 224), color=(255, 0, 0)):
     """Create a simple test image"""
-    img = Image.new('RGB', size, color=color)
+    img = Image.new("RGB", size, color=color)
     img_byte_arr = io.BytesIO()
-    img.save(img_byte_arr, format='JPEG')
+    img.save(img_byte_arr, format="JPEG")
     img_byte_arr.seek(0)
     return img_byte_arr
 
@@ -112,8 +113,7 @@ class TestPredictionEndpoints:
 
         # Send prediction request
         response = client.post(
-            "/predict",
-            files={"file": ("test.jpg", test_image, "image/jpeg")}
+            "/predict", files={"file": ("test.jpg", test_image, "image/jpeg")}
         )
 
         # If model is not loaded, expect 503
@@ -137,8 +137,7 @@ class TestPredictionEndpoints:
         text_file = io.BytesIO(b"This is not an image")
 
         response = client.post(
-            "/predict",
-            files={"file": ("test.txt", text_file, "text/plain")}
+            "/predict", files={"file": ("test.txt", text_file, "text/plain")}
         )
 
         # Should be 400 (bad request) or 503 (model not loaded)
@@ -155,8 +154,7 @@ class TestPredictionEndpoints:
         ]
 
         response = client.post(
-            "/predict/batch",
-            files=[("files", img) for img in test_images]
+            "/predict/batch", files=[("files", img) for img in test_images]
         )
 
         # If model is not loaded, expect 503
@@ -189,13 +187,11 @@ class TestPredictionEndpoints:
         """Test batch prediction with too many files"""
         # Create 11 test images (exceeds limit of 10)
         test_images = [
-            (f"test{i}.jpg", create_test_image(), "image/jpeg")
-            for i in range(11)
+            (f"test{i}.jpg", create_test_image(), "image/jpeg") for i in range(11)
         ]
 
         response = client.post(
-            "/predict/batch",
-            files=[("files", img) for img in test_images]
+            "/predict/batch", files=[("files", img) for img in test_images]
         )
 
         # Should be 400 (bad request) or 503 (model not loaded)

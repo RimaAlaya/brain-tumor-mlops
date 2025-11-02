@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.models.cnn_model import create_cnn_model, compile_model
+from src.models.cnn_model import compile_model, create_cnn_model
 
 
 def test_model_creation():

@@ -1,0 +1,84 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  formatting:
+    name: Check Code Formatting
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install formatting tools
+      run: |
+        pip install black isort
+
+    - name: Check black formatting
+      run: |
+        black --check --diff src/ tests/
+
+    - name: Check isort import sorting
+      run: |
+        isort --check-only --diff src/ tests/
+
+  linting:
+    name: Lint Python Code
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        pip install flake8 pylint mypy
+        pip install -r requirements.txt
+
+    - name: Lint with flake8
+      run: |
+        # Critical errors
+        flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        # All errors/warnings
+        flake8 src/ --count --max-complexity=10 --max-line-length=127 --statistics --exit-zero
+
+    - name: Lint with pylint
+      run: |
+        pylint src/ --exit-zero --max-line-length=127
+
+    - name: Type check with mypy
+      run: |
+        mypy src/ --ignore-missing-imports --exit-zero
+
+  dockerfile-lint:
+    name: Lint Dockerfiles
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run hadolint on Dockerfiles
+      uses: hadolint/hadolint-action@v3.1.0
+      with:
+        dockerfile: Dockerfile
+        failure-threshold: warning
+
+    - name: Lint docker-compose
+      run: |
+        docker-compose config > /dev/null

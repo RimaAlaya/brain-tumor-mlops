@@ -1,34 +1,34 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, Request
-from fastapi.responses import JSONResponse
+import io
+import json
+import logging
+import sys
+import time
+from datetime import datetime
+from pathlib import Path
+from typing import List
+
+import numpy as np
+import tensorflow as tf
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-import tensorflow as tf
-import numpy as np
+from fastapi.responses import JSONResponse
 from PIL import Image
-import io
-from pathlib import Path
-import sys
-import json
-import time
-from typing import List
-import logging
-from datetime import datetime
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from src.api.schemas import (
-    PredictionResponse,
+    BatchPredictionResponse,
     HealthResponse,
     ModelInfoResponse,
-    BatchPredictionResponse,
-    PredictionRequest
+    PredictionRequest,
+    PredictionResponse,
 )
-from src.config import MODELS_DIR, IMAGE_SIZE
+from src.config import IMAGE_SIZE, MODELS_DIR
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ app = FastAPI(
     },
     license_info={
         "name": "MIT",
-    }
+    },
 )
 
 # Add CORS middleware
@@ -73,7 +73,9 @@ async def log_requests(request: Request, call_next):
     start_time = time.time()
 
     # Log request
-    logger.info(f"📥 {request.method} {request.url.path} - Client: {request.client.host}")
+    logger.info(
+        f"📥 {request.method} {request.url.path} - Client: {request.client.host}"
+    )
 
     response = await call_next(request)
 
@@ -82,7 +84,9 @@ async def log_requests(request: Request, call_next):
     response.headers["X-Process-Time"] = str(process_time)
 
     # Log response
-    logger.info(f"📤 {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.3f}s")
+    logger.info(
+        f"📤 {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.3f}s"
+    )
 
     return response
 
@@ -109,8 +113,8 @@ async def load_model():
             model = tf.keras.models.load_model(keras_model_path)
             load_time = time.time() - start_time
             logger.info(f"✅ Model loaded from {keras_model_path} in {load_time:.2f}s")
-            MODEL_METADATA['model_path'] = str(keras_model_path)
-            MODEL_METADATA['format'] = 'keras'
+            MODEL_METADATA["model_path"] = str(keras_model_path)
+            MODEL_METADATA["format"] = "keras"
             model_loaded = True
         except Exception as e:
             logger.error(f"⚠️  Error loading .keras model: {e}")
@@ -122,8 +126,8 @@ async def load_model():
             model = tf.keras.models.load_model(h5_model_path)
             load_time = time.time() - start_time
             logger.info(f"✅ Model loaded from {h5_model_path} in {load_time:.2f}s")
-            MODEL_METADATA['model_path'] = str(h5_model_path)
-            MODEL_METADATA['format'] = 'h5'
+            MODEL_METADATA["model_path"] = str(h5_model_path)
+            MODEL_METADATA["format"] = "h5"
             model_loaded = True
         except Exception as e:
             logger.error(f"⚠️  Error loading .h5 model: {e}")
@@ -133,21 +137,21 @@ async def load_model():
         logger.error("   Please train the model first: python src/training/train.py")
     else:
         # Store model metadata
-        MODEL_METADATA['input_shape'] = model.input_shape
-        MODEL_METADATA['output_shape'] = model.output_shape
-        MODEL_METADATA['total_params'] = model.count_params()
-        MODEL_METADATA['loaded_at'] = datetime.now().isoformat()
+        MODEL_METADATA["input_shape"] = model.input_shape
+        MODEL_METADATA["output_shape"] = model.output_shape
+        MODEL_METADATA["total_params"] = model.count_params()
+        MODEL_METADATA["loaded_at"] = datetime.now().isoformat()
 
     # Load class names
     if class_names_path.exists():
-        with open(class_names_path, 'r') as f:
+        with open(class_names_path, "r") as f:
             CLASS_NAMES = json.load(f)
         logger.info(f"✅ Class names loaded: {CLASS_NAMES}")
-        MODEL_METADATA['classes'] = CLASS_NAMES
+        MODEL_METADATA["classes"] = CLASS_NAMES
     else:
         logger.warning(f"⚠️  Class names not found at {class_names_path}")
         CLASS_NAMES = ["glioma", "meningioma", "notumor", "pituitary"]
-        MODEL_METADATA['classes'] = CLASS_NAMES
+        MODEL_METADATA["classes"] = CLASS_NAMES
 
     logger.info("✨ API server ready!")
 
@@ -173,7 +177,7 @@ async def health_check():
         "status": "healthy" if model is not None else "unhealthy",
         "model_loaded": model is not None,
         "timestamp": datetime.now().isoformat(),
-        "version": "2.0.0"
+        "version": "2.0.0",
     }
 
 
@@ -190,7 +194,11 @@ async def detailed_health():
         "timestamp": datetime.now().isoformat(),
         "version": "2.0.0",
         "predictions_served": PREDICTION_COUNT,
-        "avg_inference_time": round(TOTAL_INFERENCE_TIME / PREDICTION_COUNT, 3) if PREDICTION_COUNT > 0 else 0
+        "avg_inference_time": (
+            round(TOTAL_INFERENCE_TIME / PREDICTION_COUNT, 3)
+            if PREDICTION_COUNT > 0
+            else 0
+        ),
     }
 
 
@@ -207,13 +215,13 @@ async def get_model_info():
     return {
         "model_name": "EfficientNetB0",
         "framework": "TensorFlow/Keras",
-        "input_shape": MODEL_METADATA.get('input_shape'),
-        "output_shape": MODEL_METADATA.get('output_shape'),
-        "total_parameters": MODEL_METADATA.get('total_params'),
+        "input_shape": MODEL_METADATA.get("input_shape"),
+        "output_shape": MODEL_METADATA.get("output_shape"),
+        "total_parameters": MODEL_METADATA.get("total_params"),
         "classes": CLASS_NAMES,
         "image_size": IMAGE_SIZE,
-        "format": MODEL_METADATA.get('format', 'unknown'),
-        "loaded_at": MODEL_METADATA.get('loaded_at')
+        "format": MODEL_METADATA.get("format", "unknown"),
+        "loaded_at": MODEL_METADATA.get("loaded_at"),
     }
 
 
@@ -231,8 +239,8 @@ async def get_classes():
             "glioma": "A type of tumor that occurs in the brain and spinal cord",
             "meningioma": "Tumor that arises from the meninges",
             "pituitary": "Tumor in the pituitary gland",
-            "notumor": "No tumor detected"
-        }
+            "notumor": "No tumor detected",
+        },
     }
 
 
@@ -254,7 +262,8 @@ def preprocess_image(image: Image.Image) -> np.ndarray:
 
     # EfficientNet preprocessing
     from tensorflow.keras.applications.efficientnet import preprocess_input
-    img_array = preprocess_input(img_array.astype('float32'))
+
+    img_array = preprocess_input(img_array.astype("float32"))
 
     # Add batch dimension
     img_array = np.expand_dims(img_array, axis=0)
@@ -274,13 +283,15 @@ async def predict(file: UploadFile = File(...)):
     global PREDICTION_COUNT, TOTAL_INFERENCE_TIME
 
     if model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded. Please contact administrator.")
+        raise HTTPException(
+            status_code=503, detail="Model not loaded. Please contact administrator."
+        )
 
     # Validate file type
     if not file.content_type.startswith("image/"):
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid file type: {file.content_type}. Please upload an image file."
+            detail=f"Invalid file type: {file.content_type}. Please upload an image file.",
         )
 
     try:
@@ -312,19 +323,20 @@ async def predict(file: UploadFile = File(...)):
 
         # Create probability dictionary
         all_probs = {
-            CLASS_NAMES[i]: float(predictions[0][i])
-            for i in range(len(CLASS_NAMES))
+            CLASS_NAMES[i]: float(predictions[0][i]) for i in range(len(CLASS_NAMES))
         }
 
         # Log prediction
-        logger.info(f"🎯 Prediction: {predicted_class} (confidence: {confidence:.2%}) - Time: {inference_time:.3f}s")
+        logger.info(
+            f"🎯 Prediction: {predicted_class} (confidence: {confidence:.2%}) - Time: {inference_time:.3f}s"
+        )
 
         return {
             "predicted_class": predicted_class,
             "confidence": confidence,
             "all_probabilities": all_probs,
             "inference_time_seconds": round(inference_time, 4),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     except HTTPException:
@@ -351,7 +363,9 @@ async def predict_batch(files: List[UploadFile] = File(...)):
 
     # Limit batch size
     if len(files) > 10:
-        raise HTTPException(status_code=400, detail="Maximum 10 images per batch request")
+        raise HTTPException(
+            status_code=400, detail="Maximum 10 images per batch request"
+        )
 
     if len(files) == 0:
         raise HTTPException(status_code=400, detail="No files provided")
@@ -362,13 +376,15 @@ async def predict_batch(files: List[UploadFile] = File(...)):
     for idx, file in enumerate(files):
         # Validate file type
         if not file.content_type.startswith("image/"):
-            predictions_list.append({
-                "filename": file.filename,
-                "error": f"Invalid file type: {file.content_type}",
-                "predicted_class": None,
-                "confidence": None,
-                "all_probabilities": None
-            })
+            predictions_list.append(
+                {
+                    "filename": file.filename,
+                    "error": f"Invalid file type: {file.content_type}",
+                    "predicted_class": None,
+                    "confidence": None,
+                    "all_probabilities": None,
+                }
+            )
             continue
 
         try:
@@ -391,39 +407,45 @@ async def predict_batch(files: List[UploadFile] = File(...)):
                 for i in range(len(CLASS_NAMES))
             }
 
-            predictions_list.append({
-                "filename": file.filename,
-                "predicted_class": predicted_class,
-                "confidence": confidence,
-                "all_probabilities": all_probs,
-                "error": None
-            })
+            predictions_list.append(
+                {
+                    "filename": file.filename,
+                    "predicted_class": predicted_class,
+                    "confidence": confidence,
+                    "all_probabilities": all_probs,
+                    "error": None,
+                }
+            )
 
             PREDICTION_COUNT += 1
 
         except Exception as e:
             logger.error(f"❌ Error processing {file.filename}: {str(e)}")
-            predictions_list.append({
-                "filename": file.filename,
-                "error": str(e),
-                "predicted_class": None,
-                "confidence": None,
-                "all_probabilities": None
-            })
+            predictions_list.append(
+                {
+                    "filename": file.filename,
+                    "error": str(e),
+                    "predicted_class": None,
+                    "confidence": None,
+                    "all_probabilities": None,
+                }
+            )
 
     total_time = time.time() - start_time
     TOTAL_INFERENCE_TIME += total_time
 
     successful = sum(1 for p in predictions_list if p["error"] is None)
 
-    logger.info(f"📦 Batch prediction: {successful}/{len(files)} successful - Time: {total_time:.3f}s")
+    logger.info(
+        f"📦 Batch prediction: {successful}/{len(files)} successful - Time: {total_time:.3f}s"
+    )
 
     return {
         "predictions": predictions_list,
         "total_images": len(files),
         "successful_predictions": successful,
         "total_time_seconds": round(total_time, 4),
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
 
 
@@ -437,9 +459,13 @@ async def get_statistics():
     return {
         "total_predictions": PREDICTION_COUNT,
         "total_inference_time": round(TOTAL_INFERENCE_TIME, 2),
-        "average_inference_time": round(TOTAL_INFERENCE_TIME / PREDICTION_COUNT, 4) if PREDICTION_COUNT > 0 else 0,
+        "average_inference_time": (
+            round(TOTAL_INFERENCE_TIME / PREDICTION_COUNT, 4)
+            if PREDICTION_COUNT > 0
+            else 0
+        ),
         "model_loaded": model is not None,
-        "classes_available": len(CLASS_NAMES)
+        "classes_available": len(CLASS_NAMES),
     }
 
 
@@ -452,17 +478,12 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={
             "detail": "Internal server error",
             "error": str(exc),
-            "path": str(request.url)
-        }
+            "path": str(request.url),
+        },
     )
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=8000,
-        log_level="info"
-    )
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")

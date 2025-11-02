@@ -1,26 +1,34 @@
 import os
-import time
 import random
-import numpy as np
-import matplotlib.pyplot as plt
-import cv2
-from pathlib import Path
 import sys
+import time
+from pathlib import Path
+
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from sklearn.utils import shuffle
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix
-import seaborn as sns
-import tensorflow as tf
-from tensorflow.keras.utils import to_categorical
-from tensorflow.keras.applications.efficientnet import preprocess_input as eff_preprocess
-
 import mlflow
 import mlflow.keras
+import seaborn as sns
+import tensorflow as tf
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.model_selection import train_test_split
+from sklearn.utils import shuffle
+from tensorflow.keras.applications.efficientnet import preprocess_input as eff_preprocess
+from tensorflow.keras.utils import to_categorical
 
-from src.config import RAW_DATA_DIR, MODELS_DIR, IMAGE_SIZE, BATCH_SIZE, EPOCHS, LEARNING_RATE, RANDOM_STATE
+from src.config import (
+    BATCH_SIZE,
+    EPOCHS,
+    IMAGE_SIZE,
+    LEARNING_RATE,
+    MODELS_DIR,
+    RANDOM_STATE,
+    RAW_DATA_DIR,
+)
 from src.models.cnn_model import build_effnet, get_callbacks
 
 # Set seeds
@@ -47,7 +55,7 @@ def load_images(base_train, base_test, labels, image_size):
             print(f"⚠️  Folder not found: {folder}")
             continue
         for fn in sorted(os.listdir(folder)):
-            if fn.lower().endswith(('.png', '.jpg', '.jpeg')):
+            if fn.lower().endswith((".png", ".jpg", ".jpeg")):
                 img = cv2.imread(os.path.join(folder, fn))  # BGR
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # -> RGB
                 img = cv2.resize(img, (image_size, image_size))
@@ -61,7 +69,7 @@ def load_images(base_train, base_test, labels, image_size):
             print(f"⚠️  Folder not found: {folder}")
             continue
         for fn in sorted(os.listdir(folder)):
-            if fn.lower().endswith(('.png', '.jpg', '.jpeg')):
+            if fn.lower().endswith((".png", ".jpg", ".jpeg")):
                 img = cv2.imread(os.path.join(folder, fn))
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 img = cv2.resize(img, (image_size, image_size))
@@ -85,7 +93,7 @@ def preprocess_and_split(X, y, labels, random_state):
     - to_categorical
     """
     # EfficientNet preprocessing
-    X_proc = eff_preprocess(X.astype('float32'))
+    X_proc = eff_preprocess(X.astype("float32"))
 
     # Shuffle & split
     X_proc, y = shuffle(X_proc, y, random_state=random_state)
@@ -96,7 +104,14 @@ def preprocess_and_split(X, y, labels, random_state):
     y_train_cat = to_categorical(y_train, num_classes=len(labels))
     y_test_cat = to_categorical(y_test, num_classes=len(labels))
 
-    print("Train:", X_train.shape, y_train_cat.shape, "Test:", X_test.shape, y_test_cat.shape)
+    print(
+        "Train:",
+        X_train.shape,
+        y_train_cat.shape,
+        "Test:",
+        X_test.shape,
+        y_test_cat.shape,
+    )
 
     return X_train, X_test, y_train_cat, y_test_cat, y_test
 
@@ -106,25 +121,25 @@ def plot_training_history(history, save_path):
     fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 
     # Accuracy
-    axes[0].plot(history.history['accuracy'], label='Train', linewidth=2)
-    axes[0].plot(history.history['val_accuracy'], label='Validation', linewidth=2)
-    axes[0].set_title('Model Accuracy', fontsize=14, fontweight='bold')
-    axes[0].set_xlabel('Epoch')
-    axes[0].set_ylabel('Accuracy')
+    axes[0].plot(history.history["accuracy"], label="Train", linewidth=2)
+    axes[0].plot(history.history["val_accuracy"], label="Validation", linewidth=2)
+    axes[0].set_title("Model Accuracy", fontsize=14, fontweight="bold")
+    axes[0].set_xlabel("Epoch")
+    axes[0].set_ylabel("Accuracy")
     axes[0].legend()
     axes[0].grid(True, alpha=0.3)
 
     # Loss
-    axes[1].plot(history.history['loss'], label='Train', linewidth=2)
-    axes[1].plot(history.history['val_loss'], label='Validation', linewidth=2)
-    axes[1].set_title('Model Loss', fontsize=14, fontweight='bold')
-    axes[1].set_xlabel('Epoch')
-    axes[1].set_ylabel('Loss')
+    axes[1].plot(history.history["loss"], label="Train", linewidth=2)
+    axes[1].plot(history.history["val_loss"], label="Validation", linewidth=2)
+    axes[1].set_title("Model Loss", fontsize=14, fontweight="bold")
+    axes[1].set_xlabel("Epoch")
+    axes[1].set_ylabel("Loss")
     axes[1].legend()
     axes[1].grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.savefig(save_path, dpi=150, bbox_inches="tight")
     plt.close()
 
 
@@ -148,16 +163,18 @@ def evaluate_and_plot(model, X_test, y_test, labels, save_dir):
 
     # Confusion matrix (normalized)
     cm = confusion_matrix(y_true, y_pred)
-    cmn = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    cmn = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
 
     plt.figure(figsize=(8, 6))
-    sns.heatmap(cmn, annot=True, fmt='.2f', xticklabels=labels, yticklabels=labels, cmap='Blues')
-    plt.xlabel('Predicted')
-    plt.ylabel('True')
-    plt.title('Normalized Confusion Matrix')
+    sns.heatmap(
+        cmn, annot=True, fmt=".2f", xticklabels=labels, yticklabels=labels, cmap="Blues"
+    )
+    plt.xlabel("Predicted")
+    plt.ylabel("True")
+    plt.title("Normalized Confusion Matrix")
 
     cm_path = save_dir / "confusion_matrix.png"
-    plt.savefig(cm_path, dpi=150, bbox_inches='tight')
+    plt.savefig(cm_path, dpi=150, bbox_inches="tight")
     plt.close()
 
     print(f"\n📊 Confusion matrix saved: {cm_path}")
@@ -174,7 +191,7 @@ def train_model():
     print("=" * 60)
 
     # Setup
-    labels = ['glioma', 'notumor', 'meningioma', 'pituitary']
+    labels = ["glioma", "notumor", "meningioma", "pituitary"]
     base_train = str(RAW_DATA_DIR / "Training")
     base_test = str(RAW_DATA_DIR / "Testing")
 
@@ -192,16 +209,18 @@ def train_model():
     with mlflow.start_run():
 
         # Log parameters
-        mlflow.log_params({
-            "image_size": IMAGE_SIZE[0],
-            "batch_size": BATCH_SIZE,
-            "epochs": EPOCHS,
-            "learning_rate": LEARNING_RATE,
-            "random_state": RANDOM_STATE,
-            "model": "EfficientNetB0",
-            "trainable": "full_backbone",
-            "dropout": 0.5
-        })
+        mlflow.log_params(
+            {
+                "image_size": IMAGE_SIZE[0],
+                "batch_size": BATCH_SIZE,
+                "epochs": EPOCHS,
+                "learning_rate": LEARNING_RATE,
+                "random_state": RANDOM_STATE,
+                "model": "EfficientNetB0",
+                "trainable": "full_backbone",
+                "dropout": 0.5,
+            }
+        )
 
         # Load images
         print("\n" + "=" * 60)
@@ -227,11 +246,13 @@ def train_model():
             image_size=IMAGE_SIZE,
             num_classes=len(labels),
             dropout_rate=0.5,
-            learning_rate=LEARNING_RATE
+            learning_rate=LEARNING_RATE,
         )
 
         print(f"\nTotal parameters: {model.count_params():,}")
-        print(f"Trainable parameters: {sum([tf.size(w).numpy() for w in model.trainable_weights]):,}")
+        print(
+            f"Trainable parameters: {sum([tf.size(w).numpy() for w in model.trainable_weights]):,}"
+        )
 
         # Callbacks
         checkpoint_path = MODELS_DIR / "effnet_best.keras"
@@ -244,12 +265,13 @@ def train_model():
         t0 = time.time()
 
         history = model.fit(
-            X_train, y_train_cat,
+            X_train,
+            y_train_cat,
             validation_split=0.10,  # Same as notebook
             epochs=EPOCHS,
             batch_size=BATCH_SIZE,
             callbacks=callbacks,
-            verbose=1
+            verbose=1,
         )
 
         training_time = time.time() - t0
@@ -267,22 +289,27 @@ def train_model():
         best_model = tf.keras.models.load_model(str(checkpoint_path), compile=False)
 
         # Evaluate
-        y_true, y_pred, cm = evaluate_and_plot(best_model, X_test, y_test, labels, MODELS_DIR)
+        y_true, y_pred, cm = evaluate_and_plot(
+            best_model, X_test, y_test, labels, MODELS_DIR
+        )
 
         # Calculate metrics
         from sklearn.metrics import accuracy_score
+
         test_accuracy = accuracy_score(y_true, y_pred)
 
-        final_train_acc = history.history['accuracy'][-1]
-        final_val_acc = history.history['val_accuracy'][-1]
+        final_train_acc = history.history["accuracy"][-1]
+        final_val_acc = history.history["val_accuracy"][-1]
 
         # Log metrics
-        mlflow.log_metrics({
-            "final_train_accuracy": final_train_acc,
-            "final_val_accuracy": final_val_acc,
-            "test_accuracy": test_accuracy,
-            "training_time_seconds": training_time
-        })
+        mlflow.log_metrics(
+            {
+                "final_train_accuracy": final_train_acc,
+                "final_val_accuracy": final_val_acc,
+                "test_accuracy": test_accuracy,
+                "training_time_seconds": training_time,
+            }
+        )
 
         # === FIX: Save using .keras format (native Keras 3 format) ===
         print("\n" + "=" * 60)
@@ -309,10 +336,13 @@ def train_model():
 
         # Save class names
         import json
+
         class_names_path = MODELS_DIR / "class_names.json"
         # Convert labels to match API expectations
-        api_labels = [lbl.replace('_tumor', '').replace('no_', 'notumor') for lbl in labels]
-        with open(class_names_path, 'w') as f:
+        api_labels = [
+            lbl.replace("_tumor", "").replace("no_", "notumor") for lbl in labels
+        ]
+        with open(class_names_path, "w") as f:
             json.dump(api_labels, f)
 
         # Final report
@@ -341,7 +371,9 @@ def train_model():
         print("- Backbone: EfficientNetB0 (end-to-end fine-tuned)")
         print("- Input: 224x224 RGB")
         print("- Preprocess: EfficientNet preprocess_input")
-        print("- Training: validation_split=0.1, epochs=12, Adam lr=1e-3, ReduceLROnPlateau")
+        print(
+            "- Training: validation_split=0.1, epochs=12, Adam lr=1e-3, ReduceLROnPlateau"
+        )
         print("- Metric: classification_report + confusion matrix")
 
         return best_model, history
