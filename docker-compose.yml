@@ -1,11 +1,95 @@
 version: '3.8'
 
 services:
+  # API Service - Serves predictions
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.serve
+    image: brain-tumor-api:latest
+    container_name: brain-tumor-api
     ports:
       - "8000:8000"
     volumes:
-      - ./models:/app/models
+      - ./models:/app/models:ro  # Read-only model files
+      - ./logs:/app/logs         # Write logs
     environment:
-      - MODEL_PATH=/app/models/brain_tumor_model.h5
+      - MODEL_PATH=/app/models/brain_tumor_model.keras
+      - TF_CPP_MIN_LOG_LEVEL=2
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - brain-tumor-net
+
+  # Training Service (run on-demand)
+  train:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.train
+    image: brain-tumor-train:latest
+    container_name: brain-tumor-train
+    volumes:
+      - ./data:/app/data         # Training data
+      - ./models:/app/models     # Save models here
+      - ./mlruns:/app/mlruns     # MLflow tracking
+      - ./logs:/app/logs         # Training logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TF_CPP_MIN_LOG_LEVEL=2
+      - MLFLOW_TRACKING_URI=file:///app/mlruns
+    networks:
+      - brain-tumor-net
+    # Don't start automatically - run manually when needed
+    profiles:
+      - training
+
+  # MLflow UI Service (optional - for experiment tracking)
+  mlflow:
+    image: python:3.10-slim
+    container_name: brain-tumor-mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlruns
+    working_dir: /
+    command: >
+      bash -c "pip install mlflow==2.9.2 &&
+               mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri file:///mlruns"
+    networks:
+      - brain-tumor-net
+    profiles:
+      - mlflow
+
+networks:
+  brain-tumor-net:
+    driver: bridge
+
+# Usage Commands:
+# ================
+#
+# Start API only:
+#   docker-compose up -d api
+#
+# Start API + MLflow:
+#   docker-compose --profile mlflow up -d
+#
+# Run training:
+#   docker-compose --profile training run --rm train
+#
+# View logs:
+#   docker-compose logs -f api
+#
+# Stop everything:
+#   docker-compose down
+#
+# Rebuild images:
+#   docker-compose build
+#
+# Remove everything including volumes:
+#   docker-compose down -v

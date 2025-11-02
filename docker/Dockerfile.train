@@ -1,0 +1,42 @@
+# Training Dockerfile
+# Purpose: Train the brain tumor classification model
+# Usage: docker build -f docker/Dockerfile.train -t brain-tumor-train:latest .
+
+FROM python:3.10-slim as base
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies (FIXED: libgl1-mesa-glx -> libgl1)
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    libgl1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first (for caching)
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy source code
+COPY src/ ./src/
+COPY data/ ./data/
+
+# Create necessary directories
+RUN mkdir -p models logs mlruns
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV TF_CPP_MIN_LOG_LEVEL=2
+ENV MLFLOW_TRACKING_URI=file:///app/mlruns
+
+# Training entrypoint
+CMD ["python", "src/training/train.py"]
