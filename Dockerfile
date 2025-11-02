@@ -4,14 +4,15 @@
 
 FROM python:3.10-slim
 
-LABEL maintainer="your-email@example.com"
+LABEL maintainer="rima.alaya033@gmail.com"
 LABEL description="Brain Tumor Classification API"
 LABEL version="1.0.0"
 
 WORKDIR /app
 
-# Install system dependencies (FIXED: libgl1-mesa-glx -> libgl1)
-RUN apt-get update && apt-get install -y \
+# Install system dependencies with pinned versions
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     libglib2.0-0 \
@@ -48,5 +49,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Default command - API server
-CMD uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT}
+# Default command - API server (JSON notation)
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

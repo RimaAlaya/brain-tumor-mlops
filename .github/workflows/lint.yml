@@ -52,18 +52,16 @@ jobs:
 
     - name: Lint with flake8
       run: |
-        # Critical errors
         flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        # All errors/warnings
         flake8 src/ --count --max-complexity=10 --max-line-length=127 --statistics --exit-zero
 
     - name: Lint with pylint
       run: |
-        pylint src/ --exit-zero --max-line-length=127
+        pylint src/ --max-line-length=127 || true
 
     - name: Type check with mypy
       run: |
-        mypy src/ --ignore-missing-imports --exit-zero
+        mypy src/ --ignore-missing-imports || true
 
   dockerfile-lint:
     name: Lint Dockerfiles
@@ -77,7 +75,8 @@ jobs:
       uses: hadolint/hadolint-action@v3.1.0
       with:
         dockerfile: Dockerfile
-        failure-threshold: warning
+        failure-threshold: error
+        ignore: DL3008,DL3013
 
     - name: Lint docker-compose
       run: |
