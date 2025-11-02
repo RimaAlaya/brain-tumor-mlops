@@ -27,9 +27,7 @@ from src.api.schemas import (
 from src.config import IMAGE_SIZE, MODELS_DIR
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Global variables
@@ -151,9 +149,7 @@ async def log_requests(request: Request, call_next):
 
     # Log request - handle None client in test environment
     client_host = request.client.host if request.client else "test-client"
-    logger.info(
-        f"📥 {request.method} {request.url.path} - Client: {client_host}"
-    )
+    logger.info(f"📥 {request.method} {request.url.path} - Client: {client_host}")
 
     response = await call_next(request)
 
@@ -162,9 +158,7 @@ async def log_requests(request: Request, call_next):
     response.headers["X-Process-Time"] = str(process_time)
 
     # Log response
-    logger.info(
-        f"📤 {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.3f}s"
-    )
+    logger.info(f"📤 {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.3f}s")
 
     return response
 
@@ -197,11 +191,7 @@ async def detailed_health():
         "timestamp": datetime.now().isoformat(),
         "version": "2.0.0",
         "predictions_served": PREDICTION_COUNT,
-        "avg_inference_time": (
-            round(TOTAL_INFERENCE_TIME / PREDICTION_COUNT, 3)
-            if PREDICTION_COUNT > 0
-            else 0
-        ),
+        "avg_inference_time": (round(TOTAL_INFERENCE_TIME / PREDICTION_COUNT, 3) if PREDICTION_COUNT > 0 else 0),
     }
 
 
@@ -286,9 +276,7 @@ async def predict(file: UploadFile = File(...)):
     global PREDICTION_COUNT, TOTAL_INFERENCE_TIME
 
     if model is None:
-        raise HTTPException(
-            status_code=503, detail="Model not loaded. Please contact administrator."
-        )
+        raise HTTPException(status_code=503, detail="Model not loaded. Please contact administrator.")
 
     # Validate file type
     if not file.content_type.startswith("image/"):
@@ -325,14 +313,10 @@ async def predict(file: UploadFile = File(...)):
         predicted_class = CLASS_NAMES[predicted_class_idx]
 
         # Create probability dictionary
-        all_probs = {
-            CLASS_NAMES[i]: float(predictions[0][i]) for i in range(len(CLASS_NAMES))
-        }
+        all_probs = {CLASS_NAMES[i]: float(predictions[0][i]) for i in range(len(CLASS_NAMES))}
 
         # Log prediction
-        logger.info(
-            f"🎯 Prediction: {predicted_class} (confidence: {confidence:.2%}) - Time: {inference_time:.3f}s"
-        )
+        logger.info(f"🎯 Prediction: {predicted_class} (confidence: {confidence:.2%}) - Time: {inference_time:.3f}s")
 
         return {
             "predicted_class": predicted_class,
@@ -366,9 +350,7 @@ async def predict_batch(files: List[UploadFile] = File(...)):
 
     # Limit batch size
     if len(files) > 10:
-        raise HTTPException(
-            status_code=400, detail="Maximum 10 images per batch request"
-        )
+        raise HTTPException(status_code=400, detail="Maximum 10 images per batch request")
 
     if len(files) == 0:
         raise HTTPException(status_code=400, detail="No files provided")
@@ -405,10 +387,7 @@ async def predict_batch(files: List[UploadFile] = File(...)):
             predicted_class = CLASS_NAMES[predicted_class_idx]
 
             # Create probability dictionary
-            all_probs = {
-                CLASS_NAMES[i]: float(predictions[0][i])
-                for i in range(len(CLASS_NAMES))
-            }
+            all_probs = {CLASS_NAMES[i]: float(predictions[0][i]) for i in range(len(CLASS_NAMES))}
 
             predictions_list.append(
                 {
@@ -439,9 +418,7 @@ async def predict_batch(files: List[UploadFile] = File(...)):
 
     successful = sum(1 for p in predictions_list if p["error"] is None)
 
-    logger.info(
-        f"📦 Batch prediction: {successful}/{len(files)} successful - Time: {total_time:.3f}s"
-    )
+    logger.info(f"📦 Batch prediction: {successful}/{len(files)} successful - Time: {total_time:.3f}s")
 
     return {
         "predictions": predictions_list,
@@ -462,11 +439,7 @@ async def get_statistics():
     return {
         "total_predictions": PREDICTION_COUNT,
         "total_inference_time": round(TOTAL_INFERENCE_TIME, 2),
-        "average_inference_time": (
-            round(TOTAL_INFERENCE_TIME / PREDICTION_COUNT, 4)
-            if PREDICTION_COUNT > 0
-            else 0
-        ),
+        "average_inference_time": (round(TOTAL_INFERENCE_TIME / PREDICTION_COUNT, 4) if PREDICTION_COUNT > 0 else 0),
         "model_loaded": model is not None,
         "classes_available": len(CLASS_NAMES),
     }
