@@ -60,9 +60,7 @@ jobs:
 
     - name: Run flake8
       run: |
-        # Stop build if there are Python syntax errors or undefined names
         flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        # Exit-zero treats all errors as warnings
         flake8 src/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
     - name: Check code formatting with black
@@ -76,18 +74,34 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Run Bandit Security Scan
-      uses: PyCQA/bandit-action@v1
+    - name: Set up Python
+      uses: actions/setup-python@v5
       with:
-        path: src/
-        level: high
-        confidence: high
-        exit_zero: true
+        python-version: '3.10'
+
+    - name: Install Bandit
+      run: |
+        pip install bandit[sarif]
+
+    - name: Run Bandit Security Scan
+      run: |
+        bandit -r src/ -f sarif -o bandit-results.sarif --exit-zero || true
+
+    - name: Upload Bandit results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: bandit-results.sarif
+      continue-on-error: true
 
   docker-test:
     name: Docker Build Test
@@ -117,13 +131,10 @@ jobs:
           -v ${{ github.workspace }}/models:/app/models \
           brain-tumor-api:test
         
-        # Wait for container to start
         sleep 10
         
-        # Test health endpoint
         curl -f http://localhost:8000/health || exit 1
         
-        # Cleanup
         docker stop test-api
         docker rm test-api
 
