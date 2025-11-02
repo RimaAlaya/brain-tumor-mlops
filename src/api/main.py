@@ -46,7 +46,7 @@ TOTAL_INFERENCE_TIME = 0.0
 async def lifespan(app: FastAPI):
     """Lifespan event handler for startup and shutdown"""
     # Startup
-    global model, CLASS_NAMES, MODEL_METADATA
+    global model, CLASS_NAMES
 
     logger.info("🚀 Starting API server...")
 
