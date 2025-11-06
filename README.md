@@ -2,10 +2,18 @@
 
 > Production-ready deep learning pipeline for brain tumor MRI classification with end-to-end MLOps practices
 
-[![CI Pipeline](https://github.com/YOUR_USERNAME/brain-tumor-mlops/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/brain-tumor-mlops/actions)
+# 🧠 Brain Tumor Classification MLOps Pipeline
+
+[![CI Pipeline](https://github.com/YOUR_USERNAME/brain-tumor-mlops/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/brain-tumor-mlops/actions/workflows/ci.yml)
+[![Docker Build](https://github.com/YOUR_USERNAME/brain-tumor-mlops/actions/workflows/docker.yml/badge.svg)](https://github.com/YOUR_USERNAME/brain-tumor-mlops/actions/workflows/docker.yml)
+[![Code Quality](https://github.com/YOUR_USERNAME/brain-tumor-mlops/actions/workflows/lint.yml/badge.svg)](https://github.com/YOUR_USERNAME/brain-tumor-mlops/actions/workflows/lint.yml)
 [![Python 3.10](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+> Production-ready deep learning pipeline for brain tumor MRI classification with end-to-end MLOps practices
+
+## 🎯 Project Overview
+...rest of your README...
 ## 🎯 Project Overview
 
 A comprehensive MLOps implementation for classifying brain tumors from MRI scans into 4 categories:

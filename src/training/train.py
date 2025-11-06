@@ -1,35 +1,38 @@
-import os
-import random
-import sys
-import time
-from pathlib import Path
+"""
+Enhanced Training Script with Production-Grade MLflow Integration
 
-import cv2
-import matplotlib.pyplot as plt
+Key Improvements:
+- Model registry integration
+- Automated best model promotion
+- Comprehensive experiment tracking
+- System metrics logging
+- Rich metadata tagging
+"""
+
+import os
+import time
+import random
 import numpy as np
+import matplotlib.pyplot as plt
+import cv2
+from pathlib import Path
+import sys
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-import mlflow
-import mlflow.keras
+from sklearn.utils import shuffle
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 import seaborn as sns
 import tensorflow as tf
-from sklearn.metrics import classification_report, confusion_matrix
-from sklearn.model_selection import train_test_split
-from sklearn.utils import shuffle
-from tensorflow.keras.applications.efficientnet import preprocess_input as eff_preprocess
 from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.applications.efficientnet import preprocess_input as eff_preprocess
 
-from src.config import (
-    BATCH_SIZE,
-    EPOCHS,
-    IMAGE_SIZE,
-    LEARNING_RATE,
-    MODELS_DIR,
-    RANDOM_STATE,
-    RAW_DATA_DIR,
-)
+from src.config import RAW_DATA_DIR, MODELS_DIR, IMAGE_SIZE, BATCH_SIZE, EPOCHS, LEARNING_RATE, RANDOM_STATE
 from src.models.cnn_model import build_effnet, get_callbacks
+
+# Import enhanced MLflow utilities
+from src.mlflow_utils import ModelRegistry, ExperimentTracker, ManagedRun
 
 # Set seeds
 np.random.seed(RANDOM_STATE)
@@ -38,13 +41,7 @@ random.seed(RANDOM_STATE)
 
 
 def load_images(base_train, base_test, labels, image_size):
-    """
-    Load images from directories (EXACT notebook logic)
-    - Load Training folder
-    - Load Testing folder (append to X, y)
-    - BGR -> RGB conversion
-    - Resize to image_size
-    """
+    """Load images from training and testing directories"""
     X = []
     y = []
 
@@ -55,21 +52,21 @@ def load_images(base_train, base_test, labels, image_size):
             print(f"⚠️  Folder not found: {folder}")
             continue
         for fn in sorted(os.listdir(folder)):
-            if fn.lower().endswith((".png", ".jpg", ".jpeg")):
-                img = cv2.imread(os.path.join(folder, fn))  # BGR
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # -> RGB
+            if fn.lower().endswith(('.png', '.jpg', '.jpeg')):
+                img = cv2.imread(os.path.join(folder, fn))
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 img = cv2.resize(img, (image_size, image_size))
                 X.append(img)
                 y.append(labels.index(lbl))
 
-    # Load Testing (append to X, y like notebook)
+    # Load Testing
     for lbl in labels:
         folder = os.path.join(base_test, lbl)
         if not os.path.exists(folder):
             print(f"⚠️  Folder not found: {folder}")
             continue
         for fn in sorted(os.listdir(folder)):
-            if fn.lower().endswith((".png", ".jpg", ".jpeg")):
+            if fn.lower().endswith(('.png', '.jpg', '.jpeg')):
                 img = cv2.imread(os.path.join(folder, fn))
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 img = cv2.resize(img, (image_size, image_size))
@@ -79,296 +76,277 @@ def load_images(base_train, base_test, labels, image_size):
     X = np.asarray(X, dtype=np.uint8)
     y = np.asarray(y, dtype=np.int32)
 
-    print("Loaded images:", X.shape, "labels:", np.bincount(y))
-
+    print(f"✅ Loaded {len(X)} images")
     return X, y
 
 
 def preprocess_and_split(X, y, labels, random_state):
-    """
-    Preprocess + split (EXACT notebook logic)
-    - EfficientNet preprocess_input on whole array
-    - shuffle
-    - train_test_split 90/10
-    - to_categorical
-    """
-    # EfficientNet preprocessing
-    X_proc = eff_preprocess(X.astype("float32"))
-
-    # Shuffle & split
+    """Preprocess and split data"""
+    X_proc = eff_preprocess(X.astype('float32'))
     X_proc, y = shuffle(X_proc, y, random_state=random_state)
-    X_train, X_test, y_train, y_test = train_test_split(X_proc, y, test_size=0.10, random_state=random_state)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_proc, y, test_size=0.10, random_state=random_state
+    )
 
     y_train_cat = to_categorical(y_train, num_classes=len(labels))
     y_test_cat = to_categorical(y_test, num_classes=len(labels))
 
-    print(
-        "Train:",
-        X_train.shape,
-        y_train_cat.shape,
-        "Test:",
-        X_test.shape,
-        y_test_cat.shape,
-    )
-
     return X_train, X_test, y_train_cat, y_test_cat, y_test
-
-
-def plot_training_history(history, save_path):
-    """Plot training curves"""
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-
-    # Accuracy
-    axes[0].plot(history.history["accuracy"], label="Train", linewidth=2)
-    axes[0].plot(history.history["val_accuracy"], label="Validation", linewidth=2)
-    axes[0].set_title("Model Accuracy", fontsize=14, fontweight="bold")
-    axes[0].set_xlabel("Epoch")
-    axes[0].set_ylabel("Accuracy")
-    axes[0].legend()
-    axes[0].grid(True, alpha=0.3)
-
-    # Loss
-    axes[1].plot(history.history["loss"], label="Train", linewidth=2)
-    axes[1].plot(history.history["val_loss"], label="Validation", linewidth=2)
-    axes[1].set_title("Model Loss", fontsize=14, fontweight="bold")
-    axes[1].set_xlabel("Epoch")
-    axes[1].set_ylabel("Loss")
-    axes[1].legend()
-    axes[1].grid(True, alpha=0.3)
-
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=150, bbox_inches="tight")
-    plt.close()
-
-
-def evaluate_and_plot(model, X_test, y_test, labels, save_dir):
-    """
-    Evaluate model (EXACT notebook logic)
-    - classification_report
-    - confusion matrix (normalized)
-    - seaborn heatmap
-    """
-    print("\n" + "=" * 60)
-    print("📊 EVALUATION")
-    print("=" * 60)
-
-    preds = model.predict(X_test, verbose=1)
-    y_pred = np.argmax(preds, axis=1)
-    y_true = y_test
-
-    print("\nClassification Report:\n")
-    print(classification_report(y_true, y_pred, target_names=labels))
-
-    # Confusion matrix (normalized)
-    cm = confusion_matrix(y_true, y_pred)
-    cmn = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
-
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(cmn, annot=True, fmt=".2f", xticklabels=labels, yticklabels=labels, cmap="Blues")
-    plt.xlabel("Predicted")
-    plt.ylabel("True")
-    plt.title("Normalized Confusion Matrix")
-
-    cm_path = save_dir / "confusion_matrix.png"
-    plt.savefig(cm_path, dpi=150, bbox_inches="tight")
-    plt.close()
-
-    print(f"\n📊 Confusion matrix saved: {cm_path}")
-
-    return y_true, y_pred, cm
 
 
 def train_model():
     """
-    Main training function (EXACT notebook flow)
+    Main training function with enhanced MLflow tracking
     """
     print("=" * 60)
-    print("🧠 Brain Tumor Classification - EfficientNetB0")
+    print("🧠 Brain Tumor Classification - Enhanced MLflow Training")
     print("=" * 60)
 
     # Setup
-    labels = ["glioma", "notumor", "meningioma", "pituitary"]
+    labels = ['glioma', 'notumor', 'meningioma', 'pituitary']
     base_train = str(RAW_DATA_DIR / "Training")
     base_test = str(RAW_DATA_DIR / "Testing")
 
-    if not os.path.exists(base_train):
-        print(f"❌ ERROR: Training data not found at {base_train}")
+    if not os.path.exists(base_train) or not os.path.exists(base_test):
+        print(f"❌ ERROR: Training or testing data not found")
         sys.exit(1)
 
-    if not os.path.exists(base_test):
-        print(f"❌ ERROR: Testing data not found at {base_test}")
-        sys.exit(1)
+    # Initialize enhanced MLflow utilities
+    tracker = ExperimentTracker("brain-tumor-production")
+    registry = ModelRegistry()
 
-    # MLflow
-    mlflow.set_experiment("brain-tumor-efficientnet-clean")
+    # Start managed run (auto-ends on completion or error)
+    with ManagedRun(
+            tracker,
+            run_name=f"efficientnet_b0_{int(time.time())}",
+            model_architecture="EfficientNetB0",
+            training_type="full_pipeline"
+    ):
+        # Log dataset info
+        tracker.log_dataset_info({
+            "train_dir": base_train,
+            "test_dir": base_test,
+            "num_classes": len(labels),
+            "class_names": str(labels),
+            "image_size": IMAGE_SIZE[0]
+        })
 
-    with mlflow.start_run():
+        # Log hyperparameters
+        tracker.log_params({
+            "model": "EfficientNetB0",
+            "image_size": IMAGE_SIZE[0],
+            "batch_size": BATCH_SIZE,
+            "epochs": EPOCHS,
+            "learning_rate": LEARNING_RATE,
+            "random_state": RANDOM_STATE,
+            "trainable_layers": "all",
+            "dropout_rate": 0.5,
+            "optimizer": "Adam",
+            "loss": "categorical_crossentropy",
+            "validation_split": 0.10
+        })
 
-        # Log parameters
-        mlflow.log_params(
-            {
-                "image_size": IMAGE_SIZE[0],
-                "batch_size": BATCH_SIZE,
-                "epochs": EPOCHS,
-                "learning_rate": LEARNING_RATE,
-                "random_state": RANDOM_STATE,
-                "model": "EfficientNetB0",
-                "trainable": "full_backbone",
-                "dropout": 0.5,
-            }
-        )
+        # Log code version (git commit)
+        tracker.log_code_version()
 
         # Load images
-        print("\n" + "=" * 60)
-        print("STEP 1: Loading images...")
-        print("=" * 60)
+        print("\n📂 Loading images...")
         t0 = time.time()
         X, y = load_images(base_train, base_test, labels, IMAGE_SIZE[0])
-        print(f"Loading time: {time.time() - t0:.1f}s")
+        load_time = time.time() - t0
+
+        tracker.log_metrics({
+            "data_loading_time_seconds": load_time,
+            "total_images": len(X)
+        })
 
         # Preprocess & split
-        print("\n" + "=" * 60)
-        print("STEP 2: Preprocessing & splitting...")
-        print("=" * 60)
-        X_train, X_test, y_train_cat, y_test_cat, y_test = preprocess_and_split(X, y, labels, RANDOM_STATE)
+        print("\n⚙️  Preprocessing data...")
+        X_train, X_test, y_train_cat, y_test_cat, y_test = preprocess_and_split(
+            X, y, labels, RANDOM_STATE
+        )
+
+        tracker.log_metrics({
+            "train_samples": len(X_train),
+            "test_samples": len(X_test)
+        })
 
         # Build model
-        print("\n" + "=" * 60)
-        print("STEP 3: Building model...")
-        print("=" * 60)
+        print("\n🏗️  Building model...")
         model = build_effnet(
             image_size=IMAGE_SIZE,
             num_classes=len(labels),
             dropout_rate=0.5,
-            learning_rate=LEARNING_RATE,
+            learning_rate=LEARNING_RATE
         )
 
-        print(f"\nTotal parameters: {model.count_params():,}")
-        print(f"Trainable parameters: {sum([tf.size(w).numpy() for w in model.trainable_weights]):,}")
+        tracker.log_metrics({
+            "total_parameters": model.count_params(),
+            "trainable_parameters": sum([tf.size(w).numpy() for w in model.trainable_weights])
+        })
 
         # Callbacks
         checkpoint_path = MODELS_DIR / "effnet_best.keras"
         callbacks = get_callbacks(checkpoint_path)
 
         # Train
-        print("\n" + "=" * 60)
-        print("STEP 4: Training...")
-        print("=" * 60)
+        print("\n🏋️  Training model...")
         t0 = time.time()
 
         history = model.fit(
-            X_train,
-            y_train_cat,
-            validation_split=0.10,  # Same as notebook
+            X_train, y_train_cat,
+            validation_split=0.10,
             epochs=EPOCHS,
             batch_size=BATCH_SIZE,
             callbacks=callbacks,
-            verbose=1,
+            verbose=1
         )
 
         training_time = time.time() - t0
-        print(f"\n✅ Training time: {training_time:.1f}s")
 
-        # Plot training history
-        plot_path = MODELS_DIR / "training_history.png"
-        plot_training_history(history, plot_path)
-        mlflow.log_artifact(plot_path)
+        # Log training time
+        tracker.log_metrics({
+            "training_time_seconds": training_time,
+            "training_time_minutes": training_time / 60
+        })
+
+        # Log training curves
+        tracker.log_training_curves(history)
+
+        # Log epoch-wise metrics
+        for epoch, (acc, val_acc, loss, val_loss) in enumerate(zip(
+                history.history['accuracy'],
+                history.history['val_accuracy'],
+                history.history['loss'],
+                history.history['val_loss']
+        )):
+            tracker.log_metrics({
+                "train_accuracy": acc,
+                "val_accuracy": val_acc,
+                "train_loss": loss,
+                "val_loss": val_loss
+            }, step=epoch)
 
         # Load best model
-        print("\n" + "=" * 60)
-        print("STEP 5: Loading best model & evaluating...")
-        print("=" * 60)
+        print("\n📦 Loading best model...")
         best_model = tf.keras.models.load_model(str(checkpoint_path), compile=False)
 
         # Evaluate
-        y_true, y_pred, cm = evaluate_and_plot(best_model, X_test, y_test, labels, MODELS_DIR)
+        print("\n📊 Evaluating model...")
+        y_true = y_test
+        preds = best_model.predict(X_test, verbose=0)
+        y_pred = np.argmax(preds, axis=1)
 
         # Calculate metrics
-        from sklearn.metrics import accuracy_score
-
         test_accuracy = accuracy_score(y_true, y_pred)
+        final_train_acc = history.history['accuracy'][-1]
+        final_val_acc = history.history['val_accuracy'][-1]
 
-        final_train_acc = history.history["accuracy"][-1]
-        final_val_acc = history.history["val_accuracy"][-1]
+        # Log final metrics
+        tracker.log_metrics({
+            "final_train_accuracy": final_train_acc,
+            "final_val_accuracy": final_val_acc,
+            "test_accuracy": test_accuracy
+        })
 
-        # Log metrics
-        mlflow.log_metrics(
-            {
-                "final_train_accuracy": final_train_acc,
-                "final_val_accuracy": final_val_acc,
-                "test_accuracy": test_accuracy,
-                "training_time_seconds": training_time,
-            }
-        )
+        # Log classification report
+        tracker.log_classification_report(y_true, y_pred, labels)
 
-        # === FIX: Save using .keras format (native Keras 3 format) ===
-        print("\n" + "=" * 60)
-        print("STEP 6: Saving final model...")
-        print("=" * 60)
+        # Log confusion matrix
+        cm = confusion_matrix(y_true, y_pred)
+        tracker.log_confusion_matrix(cm, labels)
 
-        # Save in native Keras format (.keras) - RECOMMENDED
+        # Save model artifacts
+        print("\n💾 Saving model...")
+
+        # Save in native Keras format
         final_model_path_keras = MODELS_DIR / "brain_tumor_model.keras"
         best_model.save(str(final_model_path_keras))
-        print(f"✅ Model saved: {final_model_path_keras}")
-
-        # Also save in .h5 format for backward compatibility (using save_weights instead)
-        final_model_path_h5 = MODELS_DIR / "brain_tumor_model.h5"
-        try:
-            # Save only weights to avoid pickle issues
-            best_model.save_weights(str(final_model_path_h5))
-            print(f"✅ Model weights saved: {final_model_path_h5}")
-        except Exception as e:
-            print(f"⚠️  Could not save .h5 format: {e}")
-            print("   (This is OK - using .keras format instead)")
 
         # Log model to MLflow
-        mlflow.keras.log_model(best_model, "model")
+        tracker.log_model(best_model, artifact_path="model")
 
         # Save class names
         import json
-
         class_names_path = MODELS_DIR / "class_names.json"
-        # Convert labels to match API expectations
-        api_labels = [lbl.replace("_tumor", "").replace("no_", "notumor") for lbl in labels]
-        with open(class_names_path, "w") as f:
+        api_labels = [lbl.replace('_tumor', '').replace('no_', 'notumor') for lbl in labels]
+        with open(class_names_path, 'w') as f:
             json.dump(api_labels, f)
+
+        tracker.log_artifact(str(class_names_path))
+
+        # Get current run ID for model registry
+        run_id = tracker.run.info.run_id
+
+        # Register model in MLflow Model Registry
+        print("\n📝 Registering model in MLflow Registry...")
+        model_uri = f"runs:/{run_id}/model"
+
+        registration = registry.register_model(
+            model_uri=model_uri,
+            model_name="brain_tumor_classifier",
+            tags={
+                "accuracy": f"{test_accuracy:.4f}",
+                "architecture": "EfficientNetB0",
+                "framework": "tensorflow",
+                "dataset": "brain_mri",
+                "image_size": str(IMAGE_SIZE[0])
+            },
+            description=f"Brain tumor classifier trained on {len(X_train)} samples with {test_accuracy:.2%} test accuracy"
+        )
+
+        print(f"✅ Model registered as v{registration['version']}")
+
+        # Auto-promote if meets threshold
+        print("\n🎯 Checking for auto-promotion...")
+        promotion_threshold = 0.85  # 85% accuracy threshold
+
+        if test_accuracy >= promotion_threshold:
+            promotion = registry.auto_promote_best_model(
+                model_name="brain_tumor_classifier",
+                metric="test_accuracy",
+                threshold=promotion_threshold,
+                stage="Production"
+            )
+
+            if promotion:
+                print(f"🚀 Model auto-promoted to Production!")
+            else:
+                print(f"⚠️  Model meets threshold but not promoted (check logs)")
+        else:
+            print(f"⚠️  Model accuracy ({test_accuracy:.2%}) below threshold ({promotion_threshold:.2%})")
+            print(f"   Model registered but not promoted to Production")
 
         # Final report
         print("\n" + "=" * 60)
-        print("📈 FINAL RESULTS")
+        print("📈 TRAINING COMPLETE")
         print("=" * 60)
         print(f"Training Accuracy:   {final_train_acc * 100:.2f}%")
         print(f"Validation Accuracy: {final_val_acc * 100:.2f}%")
         print(f"Test Accuracy:       {test_accuracy * 100:.2f}%")
+        print(f"Training Time:       {training_time / 60:.1f} minutes")
         print(f"\n💾 Model saved: {final_model_path_keras}")
-        print(f"💾 Model weights: {final_model_path_h5}")
-        print(f"📝 Class names: {class_names_path}")
-        print(f"📊 Confusion matrix: {MODELS_DIR / 'confusion_matrix.png'}")
-        print(f"📈 Training plot: {plot_path}")
+        print(f"📊 MLflow Run ID: {run_id}")
+        print(f"🏷️  Model Registry: brain_tumor_classifier v{registration['version']}")
         print("=" * 60)
 
-        # Performance check
-        if test_accuracy > 0.85:
-            print("\n✨ Excellent! Model is ready for deployment.")
-        elif test_accuracy > 0.75:
-            print("\n👍 Good performance!")
-        else:
-            print("\n⚠️  Performance could be improved.")
-
-        print("\n📌 README snippet:")
-        print("- Backbone: EfficientNetB0 (end-to-end fine-tuned)")
-        print("- Input: 224x224 RGB")
-        print("- Preprocess: EfficientNet preprocess_input")
-        print("- Training: validation_split=0.1, epochs=12, Adam lr=1e-3, ReduceLROnPlateau")
-        print("- Metric: classification_report + confusion matrix")
-
-        return best_model, history
+        return best_model, history, registration
 
 
 if __name__ == "__main__":
-    model, history = train_model()
+    try:
+        model, history, registration = train_model()
 
-    print("\n✨ Training complete!")
-    print("\n📌 Next steps:")
-    print("   1. View MLflow: mlflow ui")
-    print("   2. Start API: uvicorn src.api.main:app --reload")
+        print("\n✨ Training pipeline completed successfully!")
+        print("\n📌 Next steps:")
+        print("   1. View MLflow UI: mlflow ui")
+        print("   2. Compare experiments in MLflow")
+        print("   3. Check model registry for versions")
+        print("   4. Start API: docker-compose up -d api")
+
+    except Exception as e:
+        print(f"\n❌ Training failed: {e}")
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(1)
