@@ -188,91 +188,93 @@ class ExperimentComparison:
         try:
             runs = self.get_all_runs()
 
-        metric_col = f"metrics.{metric}"
-        if metric_col not in runs.columns:
-            logger.error(f"❌ Metric '{metric}' not found")
-            return
+            metric_col = f"metrics.{metric}"
+            if metric_col not in runs.columns:
+                logger.error(f"❌ Metric '{metric}' not found")
+                return
 
-        # Get top N by this metric
-        top_runs = runs.nlargest(n_runs, metric_col)
+            # Get top N by this metric
+            top_runs = runs.nlargest(n_runs, metric_col)
 
-        # Create plot
-        fig, ax = plt.subplots(figsize=(12, 6))
+            # Create plot
+            fig, ax = plt.subplots(figsize=(12, 6))
 
-        run_names = [
-            run.get("tags.mlflow.runName", f"Run {i}")
-            for i, run in top_runs.iterrows()
-        ]
+            run_names = [
+                run.get("tags.mlflow.runName", f"Run {i}")
+                for i, run in top_runs.iterrows()
+            ]
 
-        ax.barh(range(len(top_runs)), top_runs[metric_col])
-        ax.set_yticks(range(len(top_runs)))
-        ax.set_yticklabels(run_names)
-        ax.set_xlabel(metric.replace('_', ' ').title())
-        ax.set_title(f'Top {n_runs} Runs by {metric}')
-        ax.invert_yaxis()
+            ax.barh(range(len(top_runs)), top_runs[metric_col])
+            ax.set_yticks(range(len(top_runs)))
+            ax.set_yticklabels(run_names)
+            ax.set_xlabel(metric.replace('_', ' ').title())
+            ax.set_title(f'Top {n_runs} Runs by {metric}')
+            ax.invert_yaxis()
 
-        plt.tight_layout()
+            plt.tight_layout()
 
-        if save_path:
-            plt.savefig(save_path, dpi=150, bbox_inches='tight')
-            logger.info(f"💾 Plot saved: {save_path}")
+            if save_path:
+                plt.savefig(save_path, dpi=150, bbox_inches='tight')
+                logger.info(f"💾 Plot saved: {save_path}")
 
-        plt.show()
+            plt.show()
 
-    except Exception as e:
-    logger.error(f"❌ Error plotting metric comparison: {e}")
+        except Exception as e:
+            logger.error(f"❌ Error plotting metric comparison: {e}")
 
 
-def plot_metric_over_time(
-        self,
-        metric: str,
-        save_path: Optional[str] = None
-):
-    """
-    Plot how a metric changes over time (across runs)
+    def plot_metric_over_time(
+            self,
+            metric: str,
+            save_path: Optional[str] = None
+    ):
+        """
+        Plot how a metric changes over time (across runs)
 
-    Args:
-        metric: Metric to plot
-        save_path: Path to save figure
-    """
-    try:
-        runs = self.get_all_runs()
+        Args:
+            metric: Metric to plot
+            save_path: Path to save figure
+        """
+        try:
+            runs = self.get_all_runs()
 
-        metric_col = f"metrics.{metric}"
-        if metric_col not in runs.columns:
-            logger.error(f"❌ Metric '{metric}' not found")
-            return
+            metric_col = f"metrics.{metric}"
+            if metric_col not in runs.columns:
+                logger.error(f"❌ Metric '{metric}' not found")
+                return
 
-        # Sort by start time
-        runs = runs.sort_values('start_time')
+            # Sort by start time
+            runs = runs.sort_values('start_time')
 
-        # Create plot
-        fig, ax = plt.subplots(figsize=(12, 6))
+            # Create plot
+            fig, ax = plt.subplots(figsize=(12, 6))
 
-        ax.plot(
-            runs['start_time'],
-            runs[metric_col],
-            marker='o',
-            linewidth=2,
-            markersize=8
-        )
+            ax.plot(
+                runs['start_time'],
+                runs[metric_col],
+                marker='o',
+                linewidth=2,
+                markersize=8
+            )
 
-        ax.set_xlabel('Time')
-        ax.set_ylabel(metric.replace('_', ' ').title())
-        ax.set_title(f'{metric} Over Time')
-        ax.grid(True, alpha=0.3)
+            ax.set_xlabel('Time')
+            ax.set_ylabel(metric.replace('_', ' ').title())
+            ax.set_title(f'{metric} Over Time')
+            ax.grid(True, alpha=0.3)
 
-        plt.xticks(rotation=45)
-        plt.tight_layout()
+            plt.xticks(rotation=45)
+            plt.tight_layout()
 
-        if save_path:
-            plt.savefig(save_path, dpi=150, bbox_inches='tight')
-            logger.info(f"💾 Plot saved: {save_path}")
+            if save_path:
+                plt.savefig(save_path, dpi=150, bbox_inches='tight')
+                logger.info(f"💾 Plot saved: {save_path}")
 
-        plt.show()
+            plt.show()
 
-    except Exception as e:
-        logger.error(f"❌ Error plotting metric over time: {e}")
+        except Exception as e:
+            logger.error(f"❌ Error plotting metric over time: {e}")
+
+
 
 
 def analyze_hyperparameters(
