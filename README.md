@@ -493,7 +493,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Rima Alaya**
 - GitHub: [@RimaAlaya](https://github.com/RimaAlaya)
-- LinkedIn: [Rima Alaya](www.linkedin.com/in/rima-alaya)
+- LinkedIn: [Rima Alaya](https://linkedin.com/in/rima-alaya)
 - Email: rimaalaya76@gmail.com
 
 
