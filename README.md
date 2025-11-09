@@ -293,27 +293,6 @@ mlflow ui --port 5000
 # http://localhost:5000
 ```
 
-### Model Registry
-
-```python
-from src.mlflow_utils import ModelRegistry
-
-registry = ModelRegistry()
-
-# Get production model
-prod_model = registry.get_production_model("brain_tumor_classifier")
-
-# Get best model by accuracy
-best_model = registry.get_best_model("brain_tumor_classifier", metric="val_accuracy")
-
-# Promote model to production
-registry.promote_model(
-    model_name="brain_tumor_classifier",
-    version=3,
-    stage="Production"
-)
-```
-
 ---
 
 ## 🎨 Interactive Demo
@@ -406,28 +385,7 @@ LOSS = "categorical_crossentropy"
 VALIDATION_SPLIT = 0.10
 ```
 
-### Data Augmentation
 
-- EfficientNet standard preprocessing
-- Train/Test split: 90/10
-- Total images: 3,000+ MRI scans
-- Classes balanced during training
-
-### Training Configuration
-
-- **Full model fine-tuning** (all layers trainable)
-- **Callbacks:** ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
-- **Metrics:** Accuracy, Loss (tracked per epoch)
-- **Hardware:** GPU-accelerated (when available)
-
-### Reproducibility
-
-All experiments tracked with:
-- Git commit hash
-- Python/TensorFlow versions
-- System specifications
-- Random seeds set
-- Dataset versions
 
 ---
 
@@ -452,16 +410,6 @@ Models are automatically promoted to Production when:
 - Test accuracy > 85%
 - All tests pass
 - Better than current production model
-
----
-
-## 📖 Documentation
-
-- [API Setup Guide](API_SETUP_GUIDE.md) - FastAPI configuration
-- [Docker Guide](DOCKER_GUIDE.md) - Container deployment
-- [MLflow Guide](MLFLOW_ENHANCED_GUIDE.md) - Experiment tracking
-- [CI/CD Guide](CICD_SETUP_GUIDE.md) - Pipeline configuration
-- [Gradio Demo Guide](GRADIO_DEMO_GUIDE.md) - Interactive interface
 
 ---
 
