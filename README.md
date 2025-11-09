@@ -138,9 +138,9 @@ MIT License - see [LICENSE](LICENSE)
 
 ## 👤 Author
 
-**Your Name**
-- GitHub: [@yourusername](https://github.com/yourusername)
-- LinkedIn: [Your Name](https://linkedin.com/in/yourname)
+**Rima Alaya**
+- GitHub: [@RimaAlaya](https://github.com/RimaAlaya)
+- LinkedIn: [Rima Alaya](https://linkedin.com/in/rimaalaya)
 
 ---
 

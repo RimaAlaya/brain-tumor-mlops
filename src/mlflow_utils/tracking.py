@@ -3,15 +3,16 @@ Enhanced Experiment Tracking
 Comprehensive logging and monitoring for ML experiments
 """
 
-import mlflow
-from mlflow.tracking import MlflowClient
-import logging
-from typing import Dict, Any, Optional, List
-from datetime import datetime
-import platform
-import psutil
 import json
+import logging
+import platform
+from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import mlflow
+import psutil
+from mlflow.tracking import MlflowClient
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -84,10 +85,7 @@ class ExperimentTracker:
         """
         try:
             # MLflow params must be strings, convert if needed
-            string_params = {
-                k: str(v) if not isinstance(v, str) else v
-                for k, v in params.items()
-            }
+            string_params = {k: str(v) if not isinstance(v, str) else v for k, v in params.items()}
             mlflow.log_params(string_params)
             logger.info(f"📝 Logged {len(params)} parameters")
         except Exception as e:
@@ -195,22 +193,16 @@ class ExperimentTracker:
             fig, ax = plt.subplots(figsize=(10, 8))
 
             # Normalize
-            cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, None]
+            cm_normalized = cm.astype("float") / cm.sum(axis=1)[:, None]
 
             # Plot
             sns.heatmap(
-                cm_normalized,
-                annot=True,
-                fmt='.2f',
-                cmap='Blues',
-                xticklabels=class_names,
-                yticklabels=class_names,
-                ax=ax
+                cm_normalized, annot=True, fmt=".2f", cmap="Blues", xticklabels=class_names, yticklabels=class_names, ax=ax
             )
 
-            ax.set_xlabel('Predicted')
-            ax.set_ylabel('True')
-            ax.set_title('Confusion Matrix (Normalized)')
+            ax.set_xlabel("Predicted")
+            ax.set_ylabel("True")
+            ax.set_title("Confusion Matrix (Normalized)")
 
             plt.tight_layout()
             self.log_figure(fig, filename)
@@ -234,20 +226,20 @@ class ExperimentTracker:
             fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
             # Accuracy
-            axes[0].plot(history.history['accuracy'], label='Train', linewidth=2)
-            axes[0].plot(history.history['val_accuracy'], label='Validation', linewidth=2)
-            axes[0].set_title('Model Accuracy', fontsize=14)
-            axes[0].set_xlabel('Epoch')
-            axes[0].set_ylabel('Accuracy')
+            axes[0].plot(history.history["accuracy"], label="Train", linewidth=2)
+            axes[0].plot(history.history["val_accuracy"], label="Validation", linewidth=2)
+            axes[0].set_title("Model Accuracy", fontsize=14)
+            axes[0].set_xlabel("Epoch")
+            axes[0].set_ylabel("Accuracy")
             axes[0].legend()
             axes[0].grid(True, alpha=0.3)
 
             # Loss
-            axes[1].plot(history.history['loss'], label='Train', linewidth=2)
-            axes[1].plot(history.history['val_loss'], label='Validation', linewidth=2)
-            axes[1].set_title('Model Loss', fontsize=14)
-            axes[1].set_xlabel('Epoch')
-            axes[1].set_ylabel('Loss')
+            axes[1].plot(history.history["loss"], label="Train", linewidth=2)
+            axes[1].plot(history.history["val_loss"], label="Validation", linewidth=2)
+            axes[1].set_title("Model Loss", fontsize=14)
+            axes[1].set_xlabel("Epoch")
+            axes[1].set_ylabel("Loss")
             axes[1].legend()
             axes[1].grid(True, alpha=0.3)
 
@@ -269,12 +261,13 @@ class ExperimentTracker:
 
             # Hardware info
             mlflow.set_tag("cpu_count", psutil.cpu_count())
-            mlflow.set_tag("memory_gb", round(psutil.virtual_memory().total / (1024 ** 3), 2))
+            mlflow.set_tag("memory_gb", round(psutil.virtual_memory().total / (1024**3), 2))
 
             # Try to get GPU info
             try:
                 import tensorflow as tf
-                gpus = tf.config.list_physical_devices('GPU')
+
+                gpus = tf.config.list_physical_devices("GPU")
                 if gpus:
                     mlflow.set_tag("gpu_available", "yes")
                     mlflow.set_tag("gpu_count", len(gpus))
@@ -306,9 +299,8 @@ class ExperimentTracker:
         """Log git commit hash if available"""
         try:
             import subprocess
-            commit_hash = subprocess.check_output(
-                ['git', 'rev-parse', 'HEAD']
-            ).decode('ascii').strip()
+
+            commit_hash = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("ascii").strip()
 
             mlflow.set_tag("git_commit", commit_hash)
             logger.info(f"📌 Git commit logged: {commit_hash[:7]}")
@@ -338,13 +330,7 @@ class ExperimentTracker:
         except Exception as e:
             logger.error(f"❌ Error ending run: {e}")
 
-    def log_classification_report(
-            self,
-            y_true,
-            y_pred,
-            class_names: List[str],
-            filename: str = "classification_report.json"
-    ):
+    def log_classification_report(self, y_true, y_pred, class_names: List[str], filename: str = "classification_report.json"):
         """
         Log classification report
 
@@ -357,19 +343,14 @@ class ExperimentTracker:
         try:
             from sklearn.metrics import classification_report
 
-            report = classification_report(
-                y_true,
-                y_pred,
-                target_names=class_names,
-                output_dict=True
-            )
+            report = classification_report(y_true, y_pred, target_names=class_names, output_dict=True)
 
             # Log as artifact
             self.log_dict(report, filename)
 
             # Log key metrics
-            mlflow.log_metric("macro_f1", report['macro avg']['f1-score'])
-            mlflow.log_metric("weighted_f1", report['weighted avg']['f1-score'])
+            mlflow.log_metric("macro_f1", report["macro avg"]["f1-score"])
+            mlflow.log_metric("weighted_f1", report["weighted avg"]["f1-score"])
 
             logger.info("📋 Classification report logged")
         except Exception as e:

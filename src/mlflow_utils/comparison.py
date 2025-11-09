@@ -3,13 +3,14 @@ Experiment Comparison Utilities
 Compare and analyze multiple ML experiments
 """
 
-import mlflow
-from mlflow.tracking import MlflowClient
-import pandas as pd
-from typing import List, Optional, Dict, Any
 import logging
+from typing import Any, Dict, List, Optional
+
 import matplotlib.pyplot as plt
+import mlflow
+import pandas as pd
 import seaborn as sns
+from mlflow.tracking import MlflowClient
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -61,9 +62,7 @@ class ExperimentComparison:
         """
         try:
             runs = mlflow.search_runs(
-                experiment_ids=[self.experiment_id],
-                filter_string=filter_string,
-                order_by=["start_time DESC"]
+                experiment_ids=[self.experiment_id], filter_string=filter_string, order_by=["start_time DESC"]
             )
 
             logger.info(f"📊 Retrieved {len(runs)} runs")
@@ -74,10 +73,7 @@ class ExperimentComparison:
             raise
 
     def compare_runs(
-            self,
-            run_ids: List[str],
-            metrics: Optional[List[str]] = None,
-            params: Optional[List[str]] = None
+        self, run_ids: List[str], metrics: Optional[List[str]] = None, params: Optional[List[str]] = None
     ) -> pd.DataFrame:
         """
         Compare specific runs
@@ -100,7 +96,7 @@ class ExperimentComparison:
                     "run_id": run_id[:8],  # Shortened ID
                     "run_name": run.data.tags.get("mlflow.runName", "N/A"),
                     "status": run.info.status,
-                    "start_time": run.info.start_time
+                    "start_time": run.info.start_time,
                 }
 
                 # Add metrics
@@ -132,12 +128,7 @@ class ExperimentComparison:
             logger.error(f"❌ Error comparing runs: {e}")
             raise
 
-    def get_top_runs(
-            self,
-            metric: str,
-            n: int = 5,
-            ascending: bool = False
-    ) -> pd.DataFrame:
+    def get_top_runs(self, metric: str, n: int = 5, ascending: bool = False) -> pd.DataFrame:
         """
         Get top N runs by metric
 
@@ -158,10 +149,7 @@ class ExperimentComparison:
                 return pd.DataFrame()
 
             # Sort and get top N
-            top_runs = runs.sort_values(
-                by=metric_col,
-                ascending=ascending
-            ).head(n)
+            top_runs = runs.sort_values(by=metric_col, ascending=ascending).head(n)
 
             logger.info(f"🏆 Top {n} runs by {metric}")
 
@@ -171,12 +159,7 @@ class ExperimentComparison:
             logger.error(f"❌ Error getting top runs: {e}")
             raise
 
-    def plot_metric_comparison(
-            self,
-            metric: str,
-            n_runs: int = 10,
-            save_path: Optional[str] = None
-    ):
+    def plot_metric_comparison(self, metric: str, n_runs: int = 10, save_path: Optional[str] = None):
         """
         Plot metric comparison across runs
 
@@ -199,22 +182,19 @@ class ExperimentComparison:
             # Create plot
             fig, ax = plt.subplots(figsize=(12, 6))
 
-            run_names = [
-                run.get("tags.mlflow.runName", f"Run {i}")
-                for i, run in top_runs.iterrows()
-            ]
+            run_names = [run.get("tags.mlflow.runName", f"Run {i}") for i, run in top_runs.iterrows()]
 
             ax.barh(range(len(top_runs)), top_runs[metric_col])
             ax.set_yticks(range(len(top_runs)))
             ax.set_yticklabels(run_names)
-            ax.set_xlabel(metric.replace('_', ' ').title())
-            ax.set_title(f'Top {n_runs} Runs by {metric}')
+            ax.set_xlabel(metric.replace("_", " ").title())
+            ax.set_title(f"Top {n_runs} Runs by {metric}")
             ax.invert_yaxis()
 
             plt.tight_layout()
 
             if save_path:
-                plt.savefig(save_path, dpi=150, bbox_inches='tight')
+                plt.savefig(save_path, dpi=150, bbox_inches="tight")
                 logger.info(f"💾 Plot saved: {save_path}")
 
             plt.show()
@@ -222,12 +202,7 @@ class ExperimentComparison:
         except Exception as e:
             logger.error(f"❌ Error plotting metric comparison: {e}")
 
-
-    def plot_metric_over_time(
-            self,
-            metric: str,
-            save_path: Optional[str] = None
-    ):
+    def plot_metric_over_time(self, metric: str, save_path: Optional[str] = None):
         """
         Plot how a metric changes over time (across runs)
 
@@ -244,29 +219,23 @@ class ExperimentComparison:
                 return
 
             # Sort by start time
-            runs = runs.sort_values('start_time')
+            runs = runs.sort_values("start_time")
 
             # Create plot
             fig, ax = plt.subplots(figsize=(12, 6))
 
-            ax.plot(
-                runs['start_time'],
-                runs[metric_col],
-                marker='o',
-                linewidth=2,
-                markersize=8
-            )
+            ax.plot(runs["start_time"], runs[metric_col], marker="o", linewidth=2, markersize=8)
 
-            ax.set_xlabel('Time')
-            ax.set_ylabel(metric.replace('_', ' ').title())
-            ax.set_title(f'{metric} Over Time')
+            ax.set_xlabel("Time")
+            ax.set_ylabel(metric.replace("_", " ").title())
+            ax.set_title(f"{metric} Over Time")
             ax.grid(True, alpha=0.3)
 
             plt.xticks(rotation=45)
             plt.tight_layout()
 
             if save_path:
-                plt.savefig(save_path, dpi=150, bbox_inches='tight')
+                plt.savefig(save_path, dpi=150, bbox_inches="tight")
                 logger.info(f"💾 Plot saved: {save_path}")
 
             plt.show()
@@ -275,13 +244,7 @@ class ExperimentComparison:
             logger.error(f"❌ Error plotting metric over time: {e}")
 
 
-
-
-def analyze_hyperparameters(
-        self,
-        target_metric: str,
-        params: List[str]
-) -> pd.DataFrame:
+def analyze_hyperparameters(self, target_metric: str, params: List[str]) -> pd.DataFrame:
     """
     Analyze correlation between hyperparameters and metric
 
@@ -306,14 +269,14 @@ def analyze_hyperparameters(
         # Convert params to numeric where possible
         for col in param_cols:
             if col in analysis_df.columns:
-                analysis_df[col] = pd.to_numeric(analysis_df[col], errors='ignore')
+                analysis_df[col] = pd.to_numeric(analysis_df[col], errors="ignore")
 
         # Calculate correlations
         correlations = analysis_df.corr()[metric_col].drop(metric_col)
 
         logger.info(f"📊 Hyperparameter analysis complete")
 
-        return correlations.to_frame(name='correlation').sort_values('correlation', ascending=False)
+        return correlations.to_frame(name="correlation").sort_values("correlation", ascending=False)
 
     except Exception as e:
         logger.error(f"❌ Error analyzing hyperparameters: {e}")
@@ -356,7 +319,7 @@ def generate_comparison_report(self, output_path: str = "comparison_report.html"
                     </html>
                     """
 
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             f.write(html)
 
         logger.info(f"📄 Report generated: {output_path}")
@@ -373,7 +336,7 @@ if __name__ == "__main__":
     # Get top 5 runs
     top_runs = comparison.get_top_runs("val_accuracy", n=5)
     print("\n🏆 Top 5 Runs:")
-    print(top_runs[['tags.mlflow.runName', 'metrics.val_accuracy']])
+    print(top_runs[["tags.mlflow.runName", "metrics.val_accuracy"]])
 
     # Plot comparison
     comparison.plot_metric_comparison("val_accuracy", n_runs=10)

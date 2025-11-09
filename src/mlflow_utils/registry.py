@@ -3,11 +3,12 @@ Model Registry Management
 Handles model versioning, promotion, and lifecycle management
 """
 
-import mlflow
-from mlflow.tracking import MlflowClient
-from typing import Dict, List, Optional, Any
 import logging
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+import mlflow
+from mlflow.tracking import MlflowClient
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -38,11 +39,7 @@ class ModelRegistry:
         logger.info(f"✅ Model Registry initialized")
 
     def register_model(
-            self,
-            model_uri: str,
-            model_name: str,
-            tags: Optional[Dict[str, Any]] = None,
-            description: Optional[str] = None
+        self, model_uri: str, model_name: str, tags: Optional[Dict[str, Any]] = None, description: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Register a new model version
@@ -66,33 +63,23 @@ class ModelRegistry:
             if tags:
                 for key, value in tags.items():
                     self.client.set_model_version_tag(
-                        name=model_name,
-                        version=model_version.version,
-                        key=key,
-                        value=str(value)
+                        name=model_name, version=model_version.version, key=key, value=str(value)
                     )
 
             # Add description
             if description:
-                self.client.update_model_version(
-                    name=model_name,
-                    version=model_version.version,
-                    description=description
-                )
+                self.client.update_model_version(name=model_name, version=model_version.version, description=description)
 
             # Add registration timestamp
             self.client.set_model_version_tag(
-                name=model_name,
-                version=model_version.version,
-                key="registered_at",
-                value=datetime.now().isoformat()
+                name=model_name, version=model_version.version, key="registered_at", value=datetime.now().isoformat()
             )
 
             return {
                 "name": model_name,
                 "version": model_version.version,
                 "run_id": model_version.run_id,
-                "status": "registered"
+                "status": "registered",
             }
 
         except Exception as e:
@@ -100,11 +87,7 @@ class ModelRegistry:
             raise
 
     def promote_model(
-            self,
-            model_name: str,
-            version: int,
-            stage: str = "Production",
-            archive_existing: bool = True
+        self, model_name: str, version: int, stage: str = "Production", archive_existing: bool = True
     ) -> Dict[str, str]:
         """
         Promote a model version to a specific stage
@@ -121,52 +104,30 @@ class ModelRegistry:
         try:
             # Archive existing models in target stage if requested
             if archive_existing and stage in ["Staging", "Production"]:
-                existing_models = self.client.get_latest_versions(
-                    name=model_name,
-                    stages=[stage]
-                )
+                existing_models = self.client.get_latest_versions(name=model_name, stages=[stage])
 
                 for model in existing_models:
-                    self.client.transition_model_version_stage(
-                        name=model_name,
-                        version=model.version,
-                        stage="Archived"
-                    )
+                    self.client.transition_model_version_stage(name=model_name, version=model.version, stage="Archived")
                     logger.info(f"📦 Archived {model_name} v{model.version}")
 
             # Promote new version
-            self.client.transition_model_version_stage(
-                name=model_name,
-                version=version,
-                stage=stage
-            )
+            self.client.transition_model_version_stage(name=model_name, version=version, stage=stage)
 
             # Add promotion timestamp tag
             self.client.set_model_version_tag(
-                name=model_name,
-                version=version,
-                key=f"promoted_to_{stage.lower()}_at",
-                value=datetime.now().isoformat()
+                name=model_name, version=version, key=f"promoted_to_{stage.lower()}_at", value=datetime.now().isoformat()
             )
 
             logger.info(f"🚀 Promoted {model_name} v{version} to {stage}")
 
-            return {
-                "model_name": model_name,
-                "version": version,
-                "stage": stage,
-                "status": "promoted"
-            }
+            return {"model_name": model_name, "version": version, "stage": stage, "status": "promoted"}
 
         except Exception as e:
             logger.error(f"❌ Error promoting model: {e}")
             raise
 
     def get_best_model(
-            self,
-            model_name: str,
-            metric: str = "val_accuracy",
-            minimize: bool = False
+        self, model_name: str, metric: str = "val_accuracy", minimize: bool = False
     ) -> Optional[Dict[str, Any]]:
         """
         Get the best model version based on a metric
@@ -188,7 +149,7 @@ class ModelRegistry:
                 return None
 
             best_model = None
-            best_metric_value = float('inf') if minimize else float('-inf')
+            best_metric_value = float("inf") if minimize else float("-inf")
 
             for version in versions:
                 # Get run metrics
@@ -199,9 +160,8 @@ class ModelRegistry:
                     continue
 
                 # Compare
-                is_better = (
-                        (minimize and metric_value < best_metric_value) or
-                        (not minimize and metric_value > best_metric_value)
+                is_better = (minimize and metric_value < best_metric_value) or (
+                    not minimize and metric_value > best_metric_value
                 )
 
                 if is_better:
@@ -213,13 +173,12 @@ class ModelRegistry:
                         "stage": version.current_stage,
                         "metric": metric,
                         "metric_value": metric_value,
-                        "tags": version.tags
+                        "tags": version.tags,
                     }
 
             if best_model:
                 logger.info(
-                    f"🏆 Best model: {model_name} v{best_model['version']} "
-                    f"({metric}={best_model['metric_value']:.4f})"
+                    f"🏆 Best model: {model_name} v{best_model['version']} " f"({metric}={best_model['metric_value']:.4f})"
                 )
 
             return best_model
@@ -229,11 +188,7 @@ class ModelRegistry:
             raise
 
     def auto_promote_best_model(
-            self,
-            model_name: str,
-            metric: str = "val_accuracy",
-            threshold: Optional[float] = None,
-            stage: str = "Production"
+        self, model_name: str, metric: str = "val_accuracy", threshold: Optional[float] = None, stage: str = "Production"
     ) -> Optional[Dict[str, Any]]:
         """
         Automatically promote the best model to a stage
@@ -256,7 +211,7 @@ class ModelRegistry:
                 return None
 
             # Check threshold
-            if threshold and best_model['metric_value'] < threshold:
+            if threshold and best_model["metric_value"] < threshold:
                 logger.info(
                     f"⚠️  Best model ({best_model['metric_value']:.4f}) "
                     f"below threshold ({threshold:.4f}). Skipping promotion."
@@ -264,16 +219,12 @@ class ModelRegistry:
                 return None
 
             # Check if already in target stage
-            if best_model['stage'] == stage:
+            if best_model["stage"] == stage:
                 logger.info(f"✅ Model already in {stage}")
                 return best_model
 
             # Promote
-            promotion_result = self.promote_model(
-                model_name=model_name,
-                version=best_model['version'],
-                stage=stage
-            )
+            promotion_result = self.promote_model(model_name=model_name, version=best_model["version"], stage=stage)
 
             return {**best_model, **promotion_result}
 
@@ -303,14 +254,16 @@ class ModelRegistry:
                     if stages and version.current_stage not in stages:
                         continue
 
-                    models_info.append({
-                        "name": model.name,
-                        "version": version.version,
-                        "stage": version.current_stage,
-                        "run_id": version.run_id,
-                        "tags": version.tags,
-                        "description": version.description
-                    })
+                    models_info.append(
+                        {
+                            "name": model.name,
+                            "version": version.version,
+                            "stage": version.current_stage,
+                            "run_id": version.run_id,
+                            "tags": version.tags,
+                            "description": version.description,
+                        }
+                    )
 
             return models_info
 
@@ -329,10 +282,7 @@ class ModelRegistry:
             Production model info or None
         """
         try:
-            production_models = self.client.get_latest_versions(
-                name=model_name,
-                stages=["Production"]
-            )
+            production_models = self.client.get_latest_versions(name=model_name, stages=["Production"])
 
             if not production_models:
                 logger.warning(f"⚠️  No production model found for {model_name}")
@@ -344,19 +294,14 @@ class ModelRegistry:
                 "version": model.version,
                 "run_id": model.run_id,
                 "stage": model.current_stage,
-                "tags": model.tags
+                "tags": model.tags,
             }
 
         except Exception as e:
             logger.error(f"❌ Error getting production model: {e}")
             raise
 
-    def compare_versions(
-            self,
-            model_name: str,
-            versions: List[int],
-            metrics: List[str]
-    ) -> Dict[str, Dict[int, float]]:
+    def compare_versions(self, model_name: str, versions: List[int], metrics: List[str]) -> Dict[str, Dict[int, float]]:
         """
         Compare specific model versions across metrics
 

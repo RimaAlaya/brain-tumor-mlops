@@ -7,18 +7,19 @@ Usage:
 Access at: http://localhost:7860
 """
 
-import gradio as gr
-import tensorflow as tf
-import numpy as np
-from PIL import Image
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import gradio as gr
+import numpy as np
+import tensorflow as tf
+from PIL import Image
 
 # Add project root to path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from src.config import MODELS_DIR, IMAGE_SIZE
+from src.config import IMAGE_SIZE, MODELS_DIR
 
 
 class BrainTumorClassifier:
@@ -47,7 +48,7 @@ class BrainTumorClassifier:
         # Load class names
         class_names_file = MODELS_DIR / "class_names.json"
         if class_names_file.exists():
-            with open(class_names_file, 'r') as f:
+            with open(class_names_file, "r") as f:
                 self.class_names = json.load(f)
         else:
             self.class_names = ["glioma", "meningioma", "notumor", "pituitary"]
@@ -62,7 +63,8 @@ class BrainTumorClassifier:
 
         # Apply EfficientNet preprocessing
         from tensorflow.keras.applications.efficientnet import preprocess_input
-        img_array = preprocess_input(img_array.astype('float32'))
+
+        img_array = preprocess_input(img_array.astype("float32"))
 
         # Add batch dimension
         img_array = np.expand_dims(img_array, axis=0)
@@ -76,7 +78,7 @@ class BrainTumorClassifier:
                 "error": "Model not loaded. Please train the model first.",
                 "prediction": None,
                 "confidence": None,
-                "all_probabilities": None
+                "all_probabilities": None,
             }
 
         # Preprocess
@@ -91,16 +93,9 @@ class BrainTumorClassifier:
         predicted_class = self.class_names[predicted_idx]
 
         # All probabilities
-        all_probs = {
-            self.class_names[i]: float(predictions[0][i])
-            for i in range(len(self.class_names))
-        }
+        all_probs = {self.class_names[i]: float(predictions[0][i]) for i in range(len(self.class_names))}
 
-        return {
-            "prediction": predicted_class,
-            "confidence": confidence,
-            "all_probabilities": all_probs
-        }
+        return {"prediction": predicted_class, "confidence": confidence, "all_probabilities": all_probs}
 
 
 # Initialize classifier
@@ -168,23 +163,20 @@ def create_demo():
 
     # Create interface
     with gr.Blocks(css=custom_css, theme=gr.themes.Soft(), title="Brain Tumor Classifier") as demo:
-        gr.Markdown("""
+        gr.Markdown(
+            """
         # 🧠 Brain Tumor Classification
 
         Upload an MRI scan to classify the type of brain tumor using deep learning.
 
         **Supported Classes:** Glioma, Meningioma, Pituitary Tumor, No Tumor
-        """)
+        """
+        )
 
         with gr.Row():
             with gr.Column(scale=1):
                 # Input
-                image_input = gr.Image(
-                    type="pil",
-                    label="Upload MRI Scan",
-                    sources=["upload", "clipboard"],
-                    height=400
-                )
+                image_input = gr.Image(type="pil", label="Upload MRI Scan", sources=["upload", "clipboard"], height=400)
 
                 # Buttons
                 with gr.Row():
@@ -199,27 +191,20 @@ def create_demo():
                         # ["examples/meningioma_sample.jpg"],
                     ],
                     inputs=image_input,
-                    label="Example Images (if available)"
+                    label="Example Images (if available)",
                 )
 
             with gr.Column(scale=1):
                 # Outputs
-                predicted_class = gr.Textbox(
-                    label="Predicted Class",
-                    elem_classes="output-class"
-                )
+                predicted_class = gr.Textbox(label="Predicted Class", elem_classes="output-class")
 
-                confidence_plot = gr.Label(
-                    label="Confidence Scores",
-                    num_top_classes=4
-                )
+                confidence_plot = gr.Label(label="Confidence Scores", num_top_classes=4)
 
-                interpretation = gr.Markdown(
-                    label="Interpretation"
-                )
+                interpretation = gr.Markdown(label="Interpretation")
 
         # Model info
-        gr.Markdown("""
+        gr.Markdown(
+            """
         ---
         ### 📊 Model Information
         - **Architecture:** EfficientNetB0 (Transfer Learning)
@@ -236,21 +221,14 @@ def create_demo():
         - This model is trained for educational and demonstration purposes
         - Not intended for clinical diagnosis
         - Always consult medical professionals for health concerns
-        """)
+        """
+        )
 
         # Connect components
-        predict_btn.click(
-            fn=classify_image,
-            inputs=[image_input],
-            outputs=[predicted_class, confidence_plot, interpretation]
-        )
+        predict_btn.click(fn=classify_image, inputs=[image_input], outputs=[predicted_class, confidence_plot, interpretation])
 
         # Auto-predict on image upload
-        image_input.change(
-            fn=classify_image,
-            inputs=[image_input],
-            outputs=[predicted_class, confidence_plot, interpretation]
-        )
+        image_input.change(fn=classify_image, inputs=[image_input], outputs=[predicted_class, confidence_plot, interpretation])
 
     return demo
 
@@ -265,5 +243,5 @@ if __name__ == "__main__":
         server_port=7860,
         share=False,  # Set to True to create public link
         show_error=True,
-        show_api=False
+        show_api=False,
     )

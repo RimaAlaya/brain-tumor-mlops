@@ -10,29 +10,30 @@ Key Improvements:
 """
 
 import os
-import time
 import random
-import numpy as np
-import matplotlib.pyplot as plt
-import cv2
-from pathlib import Path
 import sys
+import time
+from pathlib import Path
+
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from sklearn.utils import shuffle
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 import seaborn as sns
 import tensorflow as tf
-from tensorflow.keras.utils import to_categorical
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.model_selection import train_test_split
+from sklearn.utils import shuffle
 from tensorflow.keras.applications.efficientnet import preprocess_input as eff_preprocess
+from tensorflow.keras.utils import to_categorical
 
-from src.config import RAW_DATA_DIR, MODELS_DIR, IMAGE_SIZE, BATCH_SIZE, EPOCHS, LEARNING_RATE, RANDOM_STATE
-from src.models.cnn_model import build_effnet, get_callbacks
+from src.config import BATCH_SIZE, EPOCHS, IMAGE_SIZE, LEARNING_RATE, MODELS_DIR, RANDOM_STATE, RAW_DATA_DIR
 
 # Import enhanced MLflow utilities
-from src.mlflow_utils import ModelRegistry, ExperimentTracker, ManagedRun
+from src.mlflow_utils import ExperimentTracker, ManagedRun, ModelRegistry
+from src.models.cnn_model import build_effnet, get_callbacks
 
 # Set seeds
 np.random.seed(RANDOM_STATE)
@@ -52,7 +53,7 @@ def load_images(base_train, base_test, labels, image_size):
             print(f"⚠️  Folder not found: {folder}")
             continue
         for fn in sorted(os.listdir(folder)):
-            if fn.lower().endswith(('.png', '.jpg', '.jpeg')):
+            if fn.lower().endswith((".png", ".jpg", ".jpeg")):
                 img = cv2.imread(os.path.join(folder, fn))
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 img = cv2.resize(img, (image_size, image_size))
@@ -66,7 +67,7 @@ def load_images(base_train, base_test, labels, image_size):
             print(f"⚠️  Folder not found: {folder}")
             continue
         for fn in sorted(os.listdir(folder)):
-            if fn.lower().endswith(('.png', '.jpg', '.jpeg')):
+            if fn.lower().endswith((".png", ".jpg", ".jpeg")):
                 img = cv2.imread(os.path.join(folder, fn))
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 img = cv2.resize(img, (image_size, image_size))
@@ -82,11 +83,9 @@ def load_images(base_train, base_test, labels, image_size):
 
 def preprocess_and_split(X, y, labels, random_state):
     """Preprocess and split data"""
-    X_proc = eff_preprocess(X.astype('float32'))
+    X_proc = eff_preprocess(X.astype("float32"))
     X_proc, y = shuffle(X_proc, y, random_state=random_state)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_proc, y, test_size=0.10, random_state=random_state
-    )
+    X_train, X_test, y_train, y_test = train_test_split(X_proc, y, test_size=0.10, random_state=random_state)
 
     y_train_cat = to_categorical(y_train, num_classes=len(labels))
     y_test_cat = to_categorical(y_test, num_classes=len(labels))
@@ -103,7 +102,7 @@ def train_model():
     print("=" * 60)
 
     # Setup
-    labels = ['glioma', 'notumor', 'meningioma', 'pituitary']
+    labels = ["glioma", "notumor", "meningioma", "pituitary"]
     base_train = str(RAW_DATA_DIR / "Training")
     base_test = str(RAW_DATA_DIR / "Testing")
 
@@ -117,34 +116,38 @@ def train_model():
 
     # Start managed run (auto-ends on completion or error)
     with ManagedRun(
-            tracker,
-            run_name=f"efficientnet_b0_{int(time.time())}",
-            model_architecture="EfficientNetB0",
-            training_type="full_pipeline"
+        tracker,
+        run_name=f"efficientnet_b0_{int(time.time())}",
+        model_architecture="EfficientNetB0",
+        training_type="full_pipeline",
     ):
         # Log dataset info
-        tracker.log_dataset_info({
-            "train_dir": base_train,
-            "test_dir": base_test,
-            "num_classes": len(labels),
-            "class_names": str(labels),
-            "image_size": IMAGE_SIZE[0]
-        })
+        tracker.log_dataset_info(
+            {
+                "train_dir": base_train,
+                "test_dir": base_test,
+                "num_classes": len(labels),
+                "class_names": str(labels),
+                "image_size": IMAGE_SIZE[0],
+            }
+        )
 
         # Log hyperparameters
-        tracker.log_params({
-            "model": "EfficientNetB0",
-            "image_size": IMAGE_SIZE[0],
-            "batch_size": BATCH_SIZE,
-            "epochs": EPOCHS,
-            "learning_rate": LEARNING_RATE,
-            "random_state": RANDOM_STATE,
-            "trainable_layers": "all",
-            "dropout_rate": 0.5,
-            "optimizer": "Adam",
-            "loss": "categorical_crossentropy",
-            "validation_split": 0.10
-        })
+        tracker.log_params(
+            {
+                "model": "EfficientNetB0",
+                "image_size": IMAGE_SIZE[0],
+                "batch_size": BATCH_SIZE,
+                "epochs": EPOCHS,
+                "learning_rate": LEARNING_RATE,
+                "random_state": RANDOM_STATE,
+                "trainable_layers": "all",
+                "dropout_rate": 0.5,
+                "optimizer": "Adam",
+                "loss": "categorical_crossentropy",
+                "validation_split": 0.10,
+            }
+        )
 
         # Log code version (git commit)
         tracker.log_code_version()
@@ -155,35 +158,24 @@ def train_model():
         X, y = load_images(base_train, base_test, labels, IMAGE_SIZE[0])
         load_time = time.time() - t0
 
-        tracker.log_metrics({
-            "data_loading_time_seconds": load_time,
-            "total_images": len(X)
-        })
+        tracker.log_metrics({"data_loading_time_seconds": load_time, "total_images": len(X)})
 
         # Preprocess & split
         print("\n⚙️  Preprocessing data...")
-        X_train, X_test, y_train_cat, y_test_cat, y_test = preprocess_and_split(
-            X, y, labels, RANDOM_STATE
-        )
+        X_train, X_test, y_train_cat, y_test_cat, y_test = preprocess_and_split(X, y, labels, RANDOM_STATE)
 
-        tracker.log_metrics({
-            "train_samples": len(X_train),
-            "test_samples": len(X_test)
-        })
+        tracker.log_metrics({"train_samples": len(X_train), "test_samples": len(X_test)})
 
         # Build model
         print("\n🏗️  Building model...")
-        model = build_effnet(
-            image_size=IMAGE_SIZE,
-            num_classes=len(labels),
-            dropout_rate=0.5,
-            learning_rate=LEARNING_RATE
-        )
+        model = build_effnet(image_size=IMAGE_SIZE, num_classes=len(labels), dropout_rate=0.5, learning_rate=LEARNING_RATE)
 
-        tracker.log_metrics({
-            "total_parameters": model.count_params(),
-            "trainable_parameters": sum([tf.size(w).numpy() for w in model.trainable_weights])
-        })
+        tracker.log_metrics(
+            {
+                "total_parameters": model.count_params(),
+                "trainable_parameters": sum([tf.size(w).numpy() for w in model.trainable_weights]),
+            }
+        )
 
         # Callbacks
         checkpoint_path = MODELS_DIR / "effnet_best.keras"
@@ -194,38 +186,29 @@ def train_model():
         t0 = time.time()
 
         history = model.fit(
-            X_train, y_train_cat,
-            validation_split=0.10,
-            epochs=EPOCHS,
-            batch_size=BATCH_SIZE,
-            callbacks=callbacks,
-            verbose=1
+            X_train, y_train_cat, validation_split=0.10, epochs=EPOCHS, batch_size=BATCH_SIZE, callbacks=callbacks, verbose=1
         )
 
         training_time = time.time() - t0
 
         # Log training time
-        tracker.log_metrics({
-            "training_time_seconds": training_time,
-            "training_time_minutes": training_time / 60
-        })
+        tracker.log_metrics({"training_time_seconds": training_time, "training_time_minutes": training_time / 60})
 
         # Log training curves
         tracker.log_training_curves(history)
 
         # Log epoch-wise metrics
-        for epoch, (acc, val_acc, loss, val_loss) in enumerate(zip(
-                history.history['accuracy'],
-                history.history['val_accuracy'],
-                history.history['loss'],
-                history.history['val_loss']
-        )):
-            tracker.log_metrics({
-                "train_accuracy": acc,
-                "val_accuracy": val_acc,
-                "train_loss": loss,
-                "val_loss": val_loss
-            }, step=epoch)
+        for epoch, (acc, val_acc, loss, val_loss) in enumerate(
+            zip(
+                history.history["accuracy"],
+                history.history["val_accuracy"],
+                history.history["loss"],
+                history.history["val_loss"],
+            )
+        ):
+            tracker.log_metrics(
+                {"train_accuracy": acc, "val_accuracy": val_acc, "train_loss": loss, "val_loss": val_loss}, step=epoch
+            )
 
         # Load best model
         print("\n📦 Loading best model...")
@@ -239,15 +222,13 @@ def train_model():
 
         # Calculate metrics
         test_accuracy = accuracy_score(y_true, y_pred)
-        final_train_acc = history.history['accuracy'][-1]
-        final_val_acc = history.history['val_accuracy'][-1]
+        final_train_acc = history.history["accuracy"][-1]
+        final_val_acc = history.history["val_accuracy"][-1]
 
         # Log final metrics
-        tracker.log_metrics({
-            "final_train_accuracy": final_train_acc,
-            "final_val_accuracy": final_val_acc,
-            "test_accuracy": test_accuracy
-        })
+        tracker.log_metrics(
+            {"final_train_accuracy": final_train_acc, "final_val_accuracy": final_val_acc, "test_accuracy": test_accuracy}
+        )
 
         # Log classification report
         tracker.log_classification_report(y_true, y_pred, labels)
@@ -268,9 +249,10 @@ def train_model():
 
         # Save class names
         import json
+
         class_names_path = MODELS_DIR / "class_names.json"
-        api_labels = [lbl.replace('_tumor', '').replace('no_', 'notumor') for lbl in labels]
-        with open(class_names_path, 'w') as f:
+        api_labels = [lbl.replace("_tumor", "").replace("no_", "notumor") for lbl in labels]
+        with open(class_names_path, "w") as f:
             json.dump(api_labels, f)
 
         tracker.log_artifact(str(class_names_path))
@@ -290,9 +272,9 @@ def train_model():
                 "architecture": "EfficientNetB0",
                 "framework": "tensorflow",
                 "dataset": "brain_mri",
-                "image_size": str(IMAGE_SIZE[0])
+                "image_size": str(IMAGE_SIZE[0]),
             },
-            description=f"Brain tumor classifier trained on {len(X_train)} samples with {test_accuracy:.2%} test accuracy"
+            description=f"Brain tumor classifier trained on {len(X_train)} samples with {test_accuracy:.2%} test accuracy",
         )
 
         print(f"✅ Model registered as v{registration['version']}")
@@ -303,10 +285,7 @@ def train_model():
 
         if test_accuracy >= promotion_threshold:
             promotion = registry.auto_promote_best_model(
-                model_name="brain_tumor_classifier",
-                metric="test_accuracy",
-                threshold=promotion_threshold,
-                stage="Production"
+                model_name="brain_tumor_classifier", metric="test_accuracy", threshold=promotion_threshold, stage="Production"
             )
 
             if promotion:
