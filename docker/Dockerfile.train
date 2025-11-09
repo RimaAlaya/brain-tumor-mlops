@@ -2,12 +2,12 @@
 # Purpose: Train the brain tumor classification model
 # Usage: docker build -f docker/Dockerfile.train -t brain-tumor-train:latest .
 
-FROM python:3.10-slim as base
+FROM python:3.10-slim AS base
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies (FIXED: libgl1-mesa-glx -> libgl1)
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -28,10 +28,12 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Copy source code
 COPY src/ ./src/
-COPY data/ ./data/
 
-# Create necessary directories
-RUN mkdir -p models logs mlruns
+# Create necessary directories (data will be mounted at runtime)
+RUN mkdir -p data/raw data/processed models logs mlruns
+
+# Note: data/ directory should be mounted as a volume at runtime
+# Example: docker run -v $(pwd)/data:/app/data brain-tumor-train:latest
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
