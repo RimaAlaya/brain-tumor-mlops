@@ -1,0 +1,79 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+examples/
+scripts/
+
+# Tests
+tests/
+.pytest_cache/
+htmlcov/
+.coverage
+*.cover
+
+# Data (exclude large datasets from image)
+data/raw/*
+data/processed/*
+# Keep .gitkeep files
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Models (will be mounted or downloaded separately)
+models/*.h5
+models/*.keras
+models/*.ckpt
+mlruns/
+
+# Notebooks
+*.ipynb
+.ipynb_checkpoints/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Misc
+*.bak
+*.tmp
+*.temp

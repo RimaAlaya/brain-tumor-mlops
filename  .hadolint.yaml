@@ -1,0 +1,21 @@
+# Hadolint configuration
+# Dockerfile linting rules
+
+ignored:
+  # DL3008: Pin versions in apt-get install
+  # We use slim base images that are regularly updated
+  - DL3008
+
+  # DL3013: Pin versions in pip
+  # We use requirements.txt for version pinning
+  - DL3013
+
+  # DL3015: Avoid additional packages
+  # We explicitly use --no-install-recommends where appropriate
+  - DL3015
+
+failure-threshold: error
+
+trustedRegistries:
+  - docker.io
+  - ghcr.io

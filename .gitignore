@@ -1,5 +1,3 @@
-### Create `.gitignore`:
-```
 # Python
 __pycache__/
 *.py[cod]
@@ -8,17 +6,25 @@ __pycache__/
 .Python
 venv/
 env/
+.venv/
 
-# Data
+# Data - ignore content but keep structure
 data/raw/*
 data/processed/*
+# But keep .gitkeep files
 !data/raw/.gitkeep
+!data/raw/Training/.gitkeep
+!data/raw/Testing/.gitkeep
 !data/processed/.gitkeep
 
-# Models
+# Models - ignore trained models
 models/*.h5
+models/*.keras
 models/*.pkl
 *.ckpt
+# But keep the directory and metadata
+!models/.gitkeep
+!models/class_names.json
 
 # MLflow
 mlruns/
@@ -34,3 +40,13 @@ Thumbs.db
 
 # Notebooks
 .ipynb_checkpoints/
+
+# Logs
+logs/*.log
+!logs/.gitkeep
+
+# Coverage
+.coverage
+htmlcov/
+coverage.xml
+.pytest_cache/

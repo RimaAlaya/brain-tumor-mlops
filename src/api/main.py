@@ -3,6 +3,7 @@ import json
 import logging
 import sys
 import time
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import List
@@ -11,10 +12,11 @@ import numpy as np
 import tensorflow as tf
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from PIL import Image
-
+# Add to existing imports
+import time
+from src.monitoring import track_prediction, track_error, track_model_load, get_metrics_app
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from src.api.schemas import (
@@ -30,31 +32,6 @@ from src.config import IMAGE_SIZE, MODELS_DIR
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# Initialize FastAPI
-app = FastAPI(
-    title="Brain Tumor Classification API",
-    description="Production-ready API for classifying brain tumor MRI images using deep learning",
-    version="2.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-    contact={
-        "name": "API Support",
-        "email": "support@braintumor-api.com",
-    },
-    license_info={
-        "name": "MIT",
-    },
-)
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Configure based on your needs
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # Global variables
 model = None
 CLASS_NAMES = []
@@ -65,29 +42,10 @@ PREDICTION_COUNT = 0
 TOTAL_INFERENCE_TIME = 0.0
 
 
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    """Log all incoming requests and response times"""
-    start_time = time.time()
-
-    # Log request
-    logger.info(f"📥 {request.method} {request.url.path} - Client: {request.client.host}")
-
-    response = await call_next(request)
-
-    # Calculate processing time
-    process_time = time.time() - start_time
-    response.headers["X-Process-Time"] = str(process_time)
-
-    # Log response
-    logger.info(f"📤 {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.3f}s")
-
-    return response
-
-
-@app.on_event("startup")
-async def load_model():
-    """Load model and class names on startup"""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan event handler for startup and shutdown"""
+    # Startup
     global model, CLASS_NAMES
 
     logger.info("🚀 Starting API server...")
@@ -110,8 +68,13 @@ async def load_model():
             MODEL_METADATA["model_path"] = str(keras_model_path)
             MODEL_METADATA["format"] = "keras"
             model_loaded = True
+
+            # ✨ NEW: Track model load
+            track_model_load(load_time, success=True)
+
         except Exception as e:
             logger.error(f"⚠️  Error loading .keras model: {e}")
+            track_model_load(0, success=False)  # ✨ NEW
 
     # Fallback to .h5 format
     if not model_loaded and h5_model_path.exists():
@@ -123,12 +86,18 @@ async def load_model():
             MODEL_METADATA["model_path"] = str(h5_model_path)
             MODEL_METADATA["format"] = "h5"
             model_loaded = True
+
+            # ✨ NEW: Track model load
+            track_model_load(load_time, success=True)
+
         except Exception as e:
             logger.error(f"⚠️  Error loading .h5 model: {e}")
+            track_model_load(0, success=False)  # ✨ NEW
 
     if not model_loaded:
         logger.error(f"❌ No model found at {MODELS_DIR}")
         logger.error("   Please train the model first: python src/training/train.py")
+        track_model_load(0, success=False)  # ✨ NEW
     else:
         # Store model metadata
         MODEL_METADATA["input_shape"] = model.input_shape
@@ -149,15 +118,65 @@ async def load_model():
 
     logger.info("✨ API server ready!")
 
+    yield
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Log shutdown event"""
+    # Shutdown
     logger.info("👋 Shutting down API server...")
     logger.info(f"📊 Total predictions served: {PREDICTION_COUNT}")
     if PREDICTION_COUNT > 0:
         avg_time = TOTAL_INFERENCE_TIME / PREDICTION_COUNT
         logger.info(f"⏱️  Average inference time: {avg_time:.3f}s")
+
+
+# Initialize FastAPI with lifespan
+app = FastAPI(
+    title="Brain Tumor Classification API",
+    description="Production-ready API for classifying brain tumor MRI images using deep learning",
+    version="2.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    lifespan=lifespan,
+    contact={
+        "name": "API Support",
+        "email": "support@braintumor-api.com",
+    },
+    license_info={
+        "name": "MIT",
+    },
+)
+# ✨ NEW: Mount Prometheus metrics endpoint
+metrics_app = get_metrics_app()
+app.mount("/metrics", metrics_app)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all incoming requests and response times"""
+    start_time = time.time()
+
+    # Log request - handle None client in test environment
+    client_host = request.client.host if request.client else "test-client"
+    logger.info(f"📥 {request.method} {request.url.path} - Client: {client_host}")
+
+    response = await call_next(request)
+
+    # Calculate processing time
+    process_time = time.time() - start_time
+    response.headers["X-Process-Time"] = str(process_time)
+
+    # Log response
+    logger.info(f"📤 {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.3f}s")
+
+    return response
 
 
 @app.get("/", response_model=HealthResponse, tags=["Health"])
@@ -273,10 +292,12 @@ async def predict(file: UploadFile = File(...)):
     global PREDICTION_COUNT, TOTAL_INFERENCE_TIME
 
     if model is None:
+        track_error("model_not_loaded", "predict")  # ✨ NEW
         raise HTTPException(status_code=503, detail="Model not loaded. Please contact administrator.")
 
     # Validate file type
     if not file.content_type.startswith("image/"):
+        track_error("invalid_file_type", "predict")  # ✨ NEW
         raise HTTPException(
             status_code=400,
             detail=f"Invalid file type: {file.content_type}. Please upload an image file.",
@@ -290,6 +311,7 @@ async def predict(file: UploadFile = File(...)):
         try:
             image = Image.open(io.BytesIO(contents)).convert("RGB")
         except Exception as e:
+            track_error("invalid_image", "predict")  # ✨ NEW
             raise HTTPException(status_code=400, detail=f"Invalid image file: {str(e)}")
 
         img_array = preprocess_image(image)
@@ -312,6 +334,14 @@ async def predict(file: UploadFile = File(...)):
         # Create probability dictionary
         all_probs = {CLASS_NAMES[i]: float(predictions[0][i]) for i in range(len(CLASS_NAMES))}
 
+        # ✨ NEW: Track metrics
+        track_prediction(
+            predicted_class=predicted_class,
+            confidence=confidence,
+            latency=inference_time,
+            endpoint="predict"
+        )
+
         # Log prediction
         logger.info(f"🎯 Prediction: {predicted_class} (confidence: {confidence:.2%}) - Time: {inference_time:.3f}s")
 
@@ -327,6 +357,7 @@ async def predict(file: UploadFile = File(...)):
         raise
     except Exception as e:
         logger.error(f"❌ Prediction error: {str(e)}")
+        track_error("prediction_error", "predict")  # ✨ NEW
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 
 

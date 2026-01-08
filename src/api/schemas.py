@@ -1,20 +1,14 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PredictionResponse(BaseModel):
     """Response model for single image prediction"""
 
-    predicted_class: str = Field(..., description="Predicted tumor class")
-    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score (0-1)")
-    all_probabilities: Dict[str, float] = Field(..., description="Probabilities for all classes")
-    inference_time_seconds: float = Field(..., description="Time taken for inference in seconds")
-    timestamp: str = Field(..., description="Prediction timestamp (ISO format)")
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "predicted_class": "glioma",
                 "confidence": 0.95,
@@ -28,6 +22,13 @@ class PredictionResponse(BaseModel):
                 "timestamp": "2024-11-01T10:30:00",
             }
         }
+    )
+
+    predicted_class: str = Field(..., description="Predicted tumor class")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score (0-1)")
+    all_probabilities: Dict[str, float] = Field(..., description="Probabilities for all classes")
+    inference_time_seconds: float = Field(..., description="Time taken for inference in seconds")
+    timestamp: str = Field(..., description="Prediction timestamp (ISO format)")
 
 
 class BatchPredictionItem(BaseModel):
@@ -43,14 +44,8 @@ class BatchPredictionItem(BaseModel):
 class BatchPredictionResponse(BaseModel):
     """Response model for batch prediction"""
 
-    predictions: List[BatchPredictionItem] = Field(..., description="List of predictions")
-    total_images: int = Field(..., description="Total number of images submitted")
-    successful_predictions: int = Field(..., description="Number of successful predictions")
-    total_time_seconds: float = Field(..., description="Total processing time in seconds")
-    timestamp: str = Field(..., description="Batch prediction timestamp (ISO format)")
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "predictions": [
                     {
@@ -72,20 +67,21 @@ class BatchPredictionResponse(BaseModel):
                 "timestamp": "2024-11-01T10:30:00",
             }
         }
+    )
+
+    predictions: List[BatchPredictionItem] = Field(..., description="List of predictions")
+    total_images: int = Field(..., description="Total number of images submitted")
+    successful_predictions: int = Field(..., description="Number of successful predictions")
+    total_time_seconds: float = Field(..., description="Total processing time in seconds")
+    timestamp: str = Field(..., description="Batch prediction timestamp (ISO format)")
 
 
 class HealthResponse(BaseModel):
     """Response model for health check"""
 
-    status: str = Field(..., description="API health status")
-    model_loaded: bool = Field(..., description="Whether model is loaded")
-    timestamp: str = Field(..., description="Health check timestamp (ISO format)")
-    version: str = Field(..., description="API version")
-    predictions_served: Optional[int] = Field(None, description="Total predictions served")
-    avg_inference_time: Optional[float] = Field(None, description="Average inference time in seconds")
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        protected_namespaces=(),
+        json_schema_extra={
             "example": {
                 "status": "healthy",
                 "model_loaded": True,
@@ -94,24 +90,23 @@ class HealthResponse(BaseModel):
                 "predictions_served": 1523,
                 "avg_inference_time": 0.052,
             }
-        }
+        },
+    )
+
+    status: str = Field(..., description="API health status")
+    model_loaded: bool = Field(..., description="Whether model is loaded")
+    timestamp: str = Field(..., description="Health check timestamp (ISO format)")
+    version: str = Field(..., description="API version")
+    predictions_served: Optional[int] = Field(None, description="Total predictions served")
+    avg_inference_time: Optional[float] = Field(None, description="Average inference time in seconds")
 
 
 class ModelInfoResponse(BaseModel):
     """Response model for model information"""
 
-    model_name: str = Field(..., description="Model architecture name")
-    framework: str = Field(..., description="Deep learning framework used")
-    input_shape: Any = Field(..., description="Model input shape")
-    output_shape: Any = Field(..., description="Model output shape")
-    total_parameters: int = Field(..., description="Total number of model parameters")
-    classes: List[str] = Field(..., description="List of classification classes")
-    image_size: tuple = Field(..., description="Expected input image size (width, height)")
-    format: str = Field(..., description="Model file format (.keras or .h5)")
-    loaded_at: str = Field(..., description="Model load timestamp (ISO format)")
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        protected_namespaces=(),
+        json_schema_extra={
             "example": {
                 "model_name": "EfficientNetB0",
                 "framework": "TensorFlow/Keras",
@@ -123,32 +118,39 @@ class ModelInfoResponse(BaseModel):
                 "format": "keras",
                 "loaded_at": "2024-11-01T09:00:00",
             }
-        }
+        },
+    )
+
+    model_name: str = Field(..., description="Model architecture name")
+    framework: str = Field(..., description="Deep learning framework used")
+    input_shape: Any = Field(..., description="Model input shape")
+    output_shape: Any = Field(..., description="Model output shape")
+    total_parameters: int = Field(..., description="Total number of model parameters")
+    classes: List[str] = Field(..., description="List of classification classes")
+    image_size: tuple = Field(..., description="Expected input image size (width, height)")
+    format: str = Field(..., description="Model file format (.keras or .h5)")
+    loaded_at: str = Field(..., description="Model load timestamp (ISO format)")
 
 
 class PredictionRequest(BaseModel):
     """Request model for prediction (if using JSON instead of file upload)"""
 
-    image_base64: str = Field(..., description="Base64 encoded image")
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "image_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
             }
         }
+    )
+
+    image_base64: str = Field(..., description="Base64 encoded image")
 
 
 class ErrorResponse(BaseModel):
     """Response model for errors"""
 
-    detail: str = Field(..., description="Error message")
-    error: Optional[str] = Field(None, description="Detailed error information")
-    path: Optional[str] = Field(None, description="Request path that caused the error")
-    timestamp: Optional[str] = Field(None, description="Error timestamp (ISO format)")
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "detail": "Model not loaded",
                 "error": "No model file found",
@@ -156,19 +158,20 @@ class ErrorResponse(BaseModel):
                 "timestamp": "2024-11-01T10:30:00",
             }
         }
+    )
+
+    detail: str = Field(..., description="Error message")
+    error: Optional[str] = Field(None, description="Detailed error information")
+    path: Optional[str] = Field(None, description="Request path that caused the error")
+    timestamp: Optional[str] = Field(None, description="Error timestamp (ISO format)")
 
 
 class StatisticsResponse(BaseModel):
     """Response model for API statistics"""
 
-    total_predictions: int = Field(..., description="Total number of predictions made")
-    total_inference_time: float = Field(..., description="Total cumulative inference time")
-    average_inference_time: float = Field(..., description="Average time per prediction")
-    model_loaded: bool = Field(..., description="Whether model is loaded")
-    classes_available: int = Field(..., description="Number of classes available")
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        protected_namespaces=(),
+        json_schema_extra={
             "example": {
                 "total_predictions": 1523,
                 "total_inference_time": 79.2,
@@ -176,4 +179,11 @@ class StatisticsResponse(BaseModel):
                 "model_loaded": True,
                 "classes_available": 4,
             }
-        }
+        },
+    )
+
+    total_predictions: int = Field(..., description="Total number of predictions made")
+    total_inference_time: float = Field(..., description="Total cumulative inference time")
+    average_inference_time: float = Field(..., description="Average time per prediction")
+    model_loaded: bool = Field(..., description="Whether model is loaded")
+    classes_available: int = Field(..., description="Number of classes available")
