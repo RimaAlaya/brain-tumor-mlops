@@ -39,7 +39,7 @@ RUN mkdir -p logs
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     TF_CPP_MIN_LOG_LEVEL=2 \
-    MODEL_PATH=/app/models/brain_tumor_model.keras \
+    MODEL_PATH=/models/brain_tumor_model.keras \
     PORT=8000
 
 # Expose port

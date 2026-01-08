@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: brain-tumor-demo
+    runtime: docker
+    dockerfilePath: ./Dockerfile.gradio
+    plan: free
+    region: frankfurt
+    healthCheckPath: /
+    envVars:
+      - key: PORT
+        value: 7860
+      - key: PYTHONUNBUFFERED
+        value: 1
+      - key: TF_CPP_MIN_LOG_LEVEL
+        value: 2
+      - key: GRADIO_SERVER_NAME
+        value: "0.0.0.0"
