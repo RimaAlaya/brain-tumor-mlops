@@ -2,6 +2,8 @@ import io
 import json
 import logging
 import sys
+
+# Add to existing imports
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -14,9 +16,9 @@ from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from PIL import Image
-# Add to existing imports
-import time
-from src.monitoring import track_prediction, track_error, track_model_load, get_metrics_app
+
+from src.monitoring import get_metrics_app, track_error, track_model_load, track_prediction
+
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from src.api.schemas import (
@@ -335,12 +337,7 @@ async def predict(file: UploadFile = File(...)):
         all_probs = {CLASS_NAMES[i]: float(predictions[0][i]) for i in range(len(CLASS_NAMES))}
 
         # ✨ NEW: Track metrics
-        track_prediction(
-            predicted_class=predicted_class,
-            confidence=confidence,
-            latency=inference_time,
-            endpoint="predict"
-        )
+        track_prediction(predicted_class=predicted_class, confidence=confidence, latency=inference_time, endpoint="predict")
 
         # Log prediction
         logger.info(f"🎯 Prediction: {predicted_class} (confidence: {confidence:.2%}) - Time: {inference_time:.3f}s")

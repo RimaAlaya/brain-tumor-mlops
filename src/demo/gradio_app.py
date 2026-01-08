@@ -20,6 +20,7 @@ except ImportError:
     MODELS_DIR = Path("models")
     MODELS_DIR.mkdir(exist_ok=True)
 
+
 class BrainTumorClassifier:
     def __init__(self):
         self.model = None
@@ -47,6 +48,7 @@ class BrainTumorClassifier:
         img_array = np.array(image)
         try:
             from tensorflow.keras.applications.efficientnet import preprocess_input
+
             img_array = preprocess_input(img_array.astype("float32"))
         except ImportError:
             img_array = img_array / 255.0
@@ -58,12 +60,7 @@ class BrainTumorClassifier:
             return {
                 "prediction": "pituitary",
                 "confidence": 0.995,
-                "all_probabilities": {
-                    "pituitary": 0.995,
-                    "notumor": 0.003,
-                    "meningioma": 0.002,
-                    "glioma": 0.000
-                }
+                "all_probabilities": {"pituitary": 0.995, "notumor": 0.003, "meningioma": 0.002, "glioma": 0.000},
             }
 
         img_array = self.preprocess_image(image)
@@ -97,7 +94,7 @@ def classify_image(image):
         "glioma": {"name": "Glioma", "icon": "🔬", "color": "#8b5cf6", "emoji": "⚠️"},
         "meningioma": {"name": "Meningioma", "icon": "🧬", "color": "#ec4899", "emoji": "⚕️"},
         "notumor": {"name": "No Tumor", "icon": "✅", "color": "#10b981", "emoji": "💚"},
-        "pituitary": {"name": "Pituitary", "icon": "⚡", "color": "#f59e0b", "emoji": "⚠️"}
+        "pituitary": {"name": "Pituitary", "icon": "⚡", "color": "#f59e0b", "emoji": "⚠️"},
     }
 
     sorted_probs = sorted(all_probs.items(), key=lambda x: x[1], reverse=True)
@@ -320,7 +317,8 @@ def create_demo():
 
     with gr.Blocks(css=custom_css, theme=gr.themes.Soft(), title="Brain Tumor AI") as demo:
 
-        gr.HTML("""
+        gr.HTML(
+            """
         <div style="text-align: center; padding: 25px; 
                     background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15)); 
                     border-radius: 20px; margin-bottom: 15px;
@@ -343,12 +341,14 @@ def create_demo():
                 </span>
             </div>
         </div>
-        """)
+        """
+        )
 
         with gr.Row():
             # LEFT: Info
             with gr.Column(scale=0.9, elem_classes="info-panel"):
-                gr.HTML("""
+                gr.HTML(
+                    """
                 <div>
                     <h3 style="color: #60a5fa; margin: 0 0 18px 0; font-size: 1.3em; display: flex; align-items: center; gap: 10px;">
                         <span style="font-size: 1.4em;">📋</span> Tumor Types
@@ -388,27 +388,30 @@ def create_demo():
                         </div>
                     </div>
                 </div>
-                """)
+                """
+                )
 
             # CENTER: Upload
             with gr.Column(scale=1.5, elem_classes="upload-section"):
-                gr.HTML("""
+                gr.HTML(
+                    """
                 <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 12px;">
                     <span style="font-size: 2em;">📤</span>
                     <h3 style="color: #60a5fa; margin: 0; font-size: 1.3em;">Upload MRI Scan</h3>
                 </div>
-                """)
+                """
+                )
 
                 # CHANGED: height=420 to match sidebar, added flags to remove buttons
                 image_input = gr.Image(
                     type="pil",
                     label="",
-                    sources=["upload"], # Removed clipboard to simplify UI if needed
+                    sources=["upload"],  # Removed clipboard to simplify UI if needed
                     height=420,
                     elem_classes="image-container",
                     show_download_button=False,  # <--- REMOVES DOWNLOAD BUTTON
-                    show_share_button=False,     # <--- REMOVES SHARE BUTTON
-                    show_fullscreen_button=False # <--- REMOVES FULLSCREEN BUTTON
+                    show_share_button=False,  # <--- REMOVES SHARE BUTTON
+                    show_fullscreen_button=False,  # <--- REMOVES FULLSCREEN BUTTON
                 )
 
                 with gr.Row():
@@ -417,7 +420,8 @@ def create_demo():
 
             # RIGHT: Results
             with gr.Column(scale=1.6, elem_classes="results-panel"):
-                results_output = gr.HTML(value="""
+                results_output = gr.HTML(
+                    value="""
                 <div style="background: linear-gradient(135deg, #1e293b, #334155); padding: 40px; border-radius: 20px; text-align: center; min-height: 420px; display: flex; align-items: center; justify-content: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
                     <div>
                         <div style="font-size: 5em; margin-bottom: 20px; filter: drop-shadow(0 0 20px rgba(96, 165, 250, 0.5));">🧠</div>
@@ -425,13 +429,10 @@ def create_demo():
                         <p style="color: #64748b; margin-top: 10px;">Upload an image and click Analyze</p>
                     </div>
                 </div>
-                """)
+                """
+                )
 
-        predict_btn.click(
-            fn=classify_image,
-            inputs=[image_input],
-            outputs=[results_output]
-        )
+        predict_btn.click(fn=classify_image, inputs=[image_input], outputs=[results_output])
 
     return demo
 

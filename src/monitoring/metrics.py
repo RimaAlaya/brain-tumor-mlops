@@ -7,72 +7,52 @@ Tracks:
 - Error rates
 - Predictions by class
 """
+
 import time
 from functools import wraps
 from typing import Callable
 
-from prometheus_client import Counter, Histogram, Gauge, make_asgi_app
-from prometheus_client import REGISTRY
+from prometheus_client import REGISTRY, Counter, Gauge, Histogram, make_asgi_app
 
 # =============================================================================
 # METRICS DEFINITIONS
 # =============================================================================
 
 # Prediction metrics
-prediction_total = Counter(
-    'brain_tumor_predictions_total',
-    'Total number of predictions made',
-    ['endpoint', 'status']
-)
+prediction_total = Counter("brain_tumor_predictions_total", "Total number of predictions made", ["endpoint", "status"])
 
 prediction_latency = Histogram(
-    'brain_tumor_prediction_latency_seconds',
-    'Prediction latency in seconds',
-    ['endpoint'],
-    buckets=(0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0)
+    "brain_tumor_prediction_latency_seconds",
+    "Prediction latency in seconds",
+    ["endpoint"],
+    buckets=(0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0),
 )
 
 prediction_confidence = Histogram(
-    'brain_tumor_prediction_confidence',
-    'Model confidence scores',
-    ['predicted_class'],
-    buckets=(0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.97, 0.99, 1.0)
+    "brain_tumor_prediction_confidence",
+    "Model confidence scores",
+    ["predicted_class"],
+    buckets=(0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.97, 0.99, 1.0),
 )
 
-predictions_by_class = Counter(
-    'brain_tumor_predictions_by_class_total',
-    'Total predictions per class',
-    ['predicted_class']
-)
+predictions_by_class = Counter("brain_tumor_predictions_by_class_total", "Total predictions per class", ["predicted_class"])
 
 # Error metrics
-error_total = Counter(
-    'brain_tumor_errors_total',
-    'Total number of errors',
-    ['error_type', 'endpoint']
-)
+error_total = Counter("brain_tumor_errors_total", "Total number of errors", ["error_type", "endpoint"])
 
 # Model metrics
-model_loaded = Gauge(
-    'brain_tumor_model_loaded',
-    'Whether model is loaded (1=yes, 0=no)'
-)
+model_loaded = Gauge("brain_tumor_model_loaded", "Whether model is loaded (1=yes, 0=no)")
 
-model_load_time = Gauge(
-    'brain_tumor_model_load_time_seconds',
-    'Time taken to load model'
-)
+model_load_time = Gauge("brain_tumor_model_load_time_seconds", "Time taken to load model")
 
 # System metrics
-active_requests = Gauge(
-    'brain_tumor_active_requests',
-    'Number of active requests being processed'
-)
+active_requests = Gauge("brain_tumor_active_requests", "Number of active requests being processed")
 
 
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
+
 
 def track_prediction(predicted_class: str, confidence: float, latency: float, endpoint: str = "predict"):
     """
@@ -127,6 +107,7 @@ def get_metrics_app():
 # =============================================================================
 # DECORATOR FOR AUTOMATIC REQUEST TRACKING
 # =============================================================================
+
 
 def track_request(endpoint_name: str):
     """
