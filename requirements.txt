@@ -24,7 +24,8 @@ pytest-cov==4.1.0
 httpx==0.26.0
 
 # Visualization
-gradio==4.15.0
+gradio==4.44.1
+huggingface-hub>=0.24.0
 matplotlib==3.8.2
 seaborn==0.13.1
 
