@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 """
-Quick launcher for Gradio demo
-
-Usage:
-    python run_demo.py
-    python run_demo.py --share  # Create public link
-    python run_demo.py --port 8080  # Custom port
+Gradio Demo for Brain Tumor Classification
+Render.com deployment friendly
 """
 
-import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -19,36 +15,13 @@ try:
     from src.demo.gradio_app import create_demo
 except ImportError as e:
     print(f"❌ Error importing demo: {e}")
-    print("\n💡 Make sure you've installed gradio:")
-    print("   pip install gradio")
     sys.exit(1)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Launch Gradio Demo")
-    parser.add_argument(
-        "--share",
-        action="store_true",
-        help="Create a public shareable link"
-    )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=7860,
-        help="Port to run on (default: 7860)"
-    )
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Show detailed error messages"
-    )
-
-    args = parser.parse_args()
-
     print("=" * 60)
     print("🧠 Brain Tumor Classification - Gradio Demo")
     print("=" * 60)
-    print()
 
     # Check if model exists
     models_dir = Path("models")
@@ -56,22 +29,15 @@ def main():
     model_h5 = models_dir / "brain_tumor_model.h5"
 
     if not model_keras.exists() and not model_h5.exists():
-        print("⚠️  WARNING: No model found in models/")
-        print("   Please train the model first:")
-        print("   python src/training/train.py")
-        print()
-        response = input("Continue anyway? (y/n): ")
-        if response.lower() != 'y':
-            print("Exiting...")
-            sys.exit(0)
+        print("⚠️  WARNING: No model found!")
+        print("   The demo will still work but predictions may fail.")
     else:
         print("✅ Model found")
 
-    print()
-    print("Starting Gradio demo...")
-    print(f"Port: {args.port}")
-    print(f"Share: {'Yes' if args.share else 'No'}")
-    print()
+    # Get port from environment (Render sets this)
+    port = int(os.environ.get("PORT", 7860))
+
+    print(f"\n🚀 Starting Gradio on port {port}...")
 
     # Create and launch demo
     demo = create_demo()
@@ -79,18 +45,13 @@ def main():
     try:
         demo.launch(
             server_name="0.0.0.0",
-            server_port=args.port,
-            share=args.share,
-            show_error=args.debug,
+            server_port=port,
+            share=False,  # Don't need share on Render
+            show_error=True,
             show_api=False
         )
-    except KeyboardInterrupt:
-        print("\n\n👋 Demo stopped by user")
     except Exception as e:
-        print(f"\n\n❌ Error: {e}")
-        if args.debug:
-            import traceback
-            traceback.print_exc()
+        print(f"\n❌ Error: {e}")
         sys.exit(1)
 
 
