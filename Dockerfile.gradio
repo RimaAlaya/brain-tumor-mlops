@@ -21,7 +21,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Copy application
 COPY src/ ./src/
+
+# ✅ FIX: Copy the models folder!
 COPY models/ ./models/
+
 COPY run_demo.py .
 
 # Environment variables
