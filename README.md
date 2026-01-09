@@ -14,7 +14,7 @@
 
 **Production-ready MLOps pipeline achieving 98.5% accuracy** with comprehensive CI/CD, automated training, model versioning, containerized deployment, and interactive web interface.
 
-[🚀 Live Demo](https://brain-tumor-mlops.onrender.com) • [📖 API Docs](https://brain-tumor-mlops.onrender.com/docs) • [🐳 Docker Hub](https://hub.docker.com/r/rimaalaya/brain-tumor-api)
+[🚀 Live Demo](https://brain-tumor-mlops.onrender.com) 
 
 ---
 
