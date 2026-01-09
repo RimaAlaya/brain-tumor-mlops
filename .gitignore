@@ -17,8 +17,7 @@ data/processed/*
 !data/raw/Testing/.gitkeep
 !data/processed/.gitkeep
 
-# Models - ignore trained models
-models/*.h5
+# Models - ignore trained model
 models/*.keras
 models/*.pkl
 *.ckpt
