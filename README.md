@@ -18,7 +18,7 @@
 
 ---
 
-![Brain Tumor Classifier Demo](https://raw.githubusercontent.com/RimaAlaya/brain-tumor-mlops/images/image.png)
+![Brain Tumor Classifier Demo](images/image.png)
 
 </div>
 
