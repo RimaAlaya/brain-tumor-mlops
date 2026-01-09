@@ -17,10 +17,7 @@ data/processed/*
 !data/raw/Testing/.gitkeep
 !data/processed/.gitkeep
 
-# Models - ignore trained model
-models/*.keras
-models/*.pkl
-*.ckpt
+
 # But keep the directory and metadata
 !models/.gitkeep
 !models/class_names.json
